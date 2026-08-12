@@ -31,8 +31,7 @@ const nameDraft = ref('')
 const notesDraft = ref('')
 const savingName = ref(false)
 
-// Reset the drafts whenever a different vehicle is selected, so an unsaved
-// edit never leaks onto the next one.
+
 watch(
   () => device.value?.id,
   () => {
@@ -110,8 +109,7 @@ async function resetDevice() {
       </header>
 
       <div class="flex-1 space-y-5 overflow-y-auto p-4">
-        <!-- Hero: a 3D model of the vehicle in its own marker colour, turned
-             to match the heading the tracker last reported. -->
+       
         <div
           class="relative grid place-items-center rounded-xl2 bg-gradient-to-b from-sand-200/70 to-sand-100/40 py-3 dark:from-ink-700/60 dark:to-ink-800/40"
         >
