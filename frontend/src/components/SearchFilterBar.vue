@@ -28,7 +28,7 @@ const search = computed({
   set: (value) => fleet.setFilters({ search: value }),
 })
 
-// An empty sortKey means "use the saved preference"; show what is in effect.
+
 const activeSort = computed({
   get: () => fleet.filters.sortKey || preferences.settings.sortKey || 'name',
   set: (value) => fleet.setFilters({ sortKey: value }),
