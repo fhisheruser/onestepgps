@@ -10,8 +10,7 @@ import (
 	"fleetview/internal/transport/dto"
 )
 
-// settingsRequest is a partial update of fleet-wide settings. Every field is a
-// pointer so "absent" and "set to false/zero" stay distinguishable.
+
 type settingsRequest struct {
 	Theme              *string `json:"theme"`
 	SortKey            *string `json:"sortKey"`
@@ -42,7 +41,7 @@ func (r settingsRequest) toPatch() service.SettingsPatch {
 	}
 }
 
-// devicePreferenceRequest is a partial update of one device's personalisation.
+
 type devicePreferenceRequest struct {
 	Hidden      *bool   `json:"hidden"`
 	DisplayName *string `json:"displayName"`
@@ -69,7 +68,7 @@ type reorderRequest struct {
 	DeviceIDs []string `json:"deviceIds"`
 }
 
-// GetPreferences godoc: GET /api/v1/preferences
+
 func (h *Handlers) GetPreferences(c *gin.Context) {
 	prefs, err := h.prefs.Get(c.Request.Context(), UserIDOf(c))
 	if err != nil {
@@ -79,7 +78,7 @@ func (h *Handlers) GetPreferences(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.FromPreferences(prefs))
 }
 
-// UpdateSettings godoc: PUT /api/v1/preferences/settings
+
 func (h *Handlers) UpdateSettings(c *gin.Context) {
 	var req settingsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -96,7 +95,7 @@ func (h *Handlers) UpdateSettings(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.FromSettings(settings))
 }
 
-// UpsertDevicePreference godoc: PUT /api/v1/preferences/devices/:deviceId
+
 func (h *Handlers) UpsertDevicePreference(c *gin.Context) {
 	var req devicePreferenceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -113,7 +112,7 @@ func (h *Handlers) UpsertDevicePreference(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.FromDevicePreference(pref))
 }
 
-// DeleteDevicePreference godoc: DELETE /api/v1/preferences/devices/:deviceId
+
 func (h *Handlers) DeleteDevicePreference(c *gin.Context) {
 	if err := h.prefs.DeleteDevicePreference(c.Request.Context(), UserIDOf(c), c.Param("deviceId")); err != nil {
 		respondError(c, h.log, err)
@@ -123,7 +122,7 @@ func (h *Handlers) DeleteDevicePreference(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// ReorderDevices godoc: POST /api/v1/preferences/devices/order
+
 func (h *Handlers) ReorderDevices(c *gin.Context) {
 	var req reorderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -143,7 +142,7 @@ func (h *Handlers) ReorderDevices(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// ResetPreferences godoc: POST /api/v1/preferences/reset
+
 func (h *Handlers) ResetPreferences(c *gin.Context) {
 	if err := h.prefs.Reset(c.Request.Context(), UserIDOf(c)); err != nil {
 		respondError(c, h.log, err)
@@ -153,12 +152,11 @@ func (h *Handlers) ResetPreferences(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// UploadIcon godoc: POST /api/v1/preferences/devices/:deviceId/icon
-// Accepts multipart/form-data with a single "icon" file part.
+
 func (h *Handlers) UploadIcon(c *gin.Context) {
 	maxBytes := h.cfg.Icons.MaxBytes
 
-	// Reject oversized bodies at the socket, before buffering them.
+	
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBytes+4096)
 
 	header, err := c.FormFile("icon")
@@ -201,7 +199,7 @@ func (h *Handlers) UploadIcon(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.FromDevicePreference(pref))
 }
 
-// DeleteIcon godoc: DELETE /api/v1/preferences/devices/:deviceId/icon
+
 func (h *Handlers) DeleteIcon(c *gin.Context) {
 	pref, err := h.prefs.DeleteIcon(c.Request.Context(), UserIDOf(c), c.Param("deviceId"))
 	if err != nil {
@@ -212,9 +210,7 @@ func (h *Handlers) DeleteIcon(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.FromDevicePreference(pref))
 }
 
-// GetIcon godoc: GET /api/v1/icons/:iconId
-// Icon ids are random and content-addressed in practice, so the response is
-// safe to cache forever.
+
 func (h *Handlers) GetIcon(c *gin.Context) {
 	icon, err := h.prefs.Icon(c.Request.Context(), c.Param("iconId"))
 	if err != nil {
@@ -224,14 +220,12 @@ func (h *Handlers) GetIcon(c *gin.Context) {
 
 	c.Header("Cache-Control", "public, max-age=31536000, immutable")
 	c.Header("X-Content-Type-Options", "nosniff")
-	// Defence in depth: even if a scriptable image type slipped past upload
-	// validation, this response may not load or execute anything.
+	
 	c.Header("Content-Security-Policy", "default-src 'none'; img-src 'self' data:; sandbox")
 	c.Data(http.StatusOK, icon.ContentType, icon.Data)
 }
 
-// notifyFleetChanged asks every realtime client to re-render. Preferences are
-// per-user, so a second browser tab (or a phone) reflects a rename instantly.
+
 func (h *Handlers) notifyFleetChanged() {
 	if h.hub == nil || h.hub.ClientCount() == 0 {
 		return
