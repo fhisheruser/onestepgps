@@ -1,0 +1,23 @@
+# Secrets — never commit. Only the .example files belong in git.
+.env
+.env.*
+!.env.example
+
+# Local database
+*.db
+*.db-shm
+*.db-wal
+data/
+
+# Build output
+dist/
+node_modules/
+fleetview
+fleetview.exe
+*.exe
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

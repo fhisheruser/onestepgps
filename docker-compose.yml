@@ -1,0 +1,18 @@
+services:
+  fleetview:
+    build: .
+    ports:
+      - '8080:8080'
+    environment:
+      # Leave ONESTEPGPS_API_KEY unset to run against the built-in simulator.
+      ONESTEPGPS_API_KEY: ${ONESTEPGPS_API_KEY:-}
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
+      DB_PATH: /data/fleetview.db
+      POLL_INTERVAL: 10s
+      APP_ENV: production
+    volumes:
+      - fleetview-data:/data
+    restart: unless-stopped
+
+volumes:
+  fleetview-data:
