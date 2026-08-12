@@ -1,18 +1,4 @@
 import { API_BASE, resolveUserId } from './api'
-
-/**
- * WebSocket client for live fleet pushes.
- *
- * Design notes:
- *  - The socket is an optimisation, never a requirement. Callers keep a REST
- *    polling fallback and this class reports its state so the UI can say which
- *    one is active.
- *  - Reconnects use exponential backoff with jitter and stop escalating at
- *    30s, so a backend restart does not turn into a reconnect storm.
- *  - The browser cannot set headers on a WebSocket handshake, so the user
- *    scope travels as a query parameter (the backend accepts either).
- */
-
 const MAX_BACKOFF_MS = 30000
 const BASE_BACKOFF_MS = 1000
 
@@ -76,7 +62,7 @@ export class RealtimeClient {
     this.socket.onopen = () => {
       this.attempt = 0
       this.setState(ConnectionState.Open)
-      // Re-apply the active filters so the first push is already correct.
+     
       if (this.lastQuery) this.sendQuery(this.lastQuery)
     }
 
@@ -91,7 +77,7 @@ export class RealtimeClient {
     }
 
     this.socket.onerror = () => {
-      // onclose always follows; reconnection is handled there.
+     
     }
 
     this.socket.onclose = () => {
@@ -124,13 +110,13 @@ export class RealtimeClient {
     }
   }
 
-  /** Mirror the list filters onto the socket so pushes arrive pre-filtered. */
+ 
   sendQuery(query) {
     this.lastQuery = query
     return this.send({ type: 'query', data: query })
   }
 
-  /** Ask for an immediate re-render, e.g. right after saving a preference. */
+ 
   requestRefresh() {
     return this.send({ type: 'refresh' })
   }
