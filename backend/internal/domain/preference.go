@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// SortKey identifies how a device list should be ordered.
+
 type SortKey string
 
 const (
@@ -18,7 +18,6 @@ const (
 	SortKeyCustom  SortKey = "custom"
 )
 
-// SortDirection is the ordering direction applied to a SortKey.
 type SortDirection string
 
 const (
@@ -26,7 +25,7 @@ const (
 	SortDesc SortDirection = "desc"
 )
 
-// SpeedUnit is the unit the UI renders speeds in.
+
 type SpeedUnit string
 
 const (
@@ -35,7 +34,6 @@ const (
 	SpeedKn  SpeedUnit = "kn"
 )
 
-// Theme is the colour scheme preference.
 type Theme string
 
 const (
@@ -44,7 +42,7 @@ const (
 	ThemeSystem Theme = "system"
 )
 
-// MarkerIcon is the vehicle silhouette drawn for a device on the map.
+
 type MarkerIcon string
 
 const (
@@ -57,7 +55,7 @@ const (
 	IconCustom MarkerIcon = "custom"
 )
 
-// Default marker styling applied to devices the user has never customised.
+
 const (
 	DefaultMarkerColor = "#B4643C"
 	MinRefreshSeconds  = 5
@@ -75,7 +73,7 @@ var (
 	validMaps    = map[string]bool{"roadmap": true, "satellite": true, "hybrid": true, "terrain": true}
 )
 
-// UserSettings holds the fleet-wide personalisation for one user.
+
 type UserSettings struct {
 	UserID             string
 	Theme              Theme
@@ -92,7 +90,7 @@ type UserSettings struct {
 	UpdatedAt          time.Time
 }
 
-// DefaultUserSettings returns the settings a brand new user starts with.
+
 func DefaultUserSettings(userID string) UserSettings {
 	return UserSettings{
 		UserID:             userID,
@@ -110,8 +108,7 @@ func DefaultUserSettings(userID string) UserSettings {
 	}
 }
 
-// Normalize coerces out-of-range or unknown values back to sane defaults so a
-// hand-crafted request can never poison the stored settings.
+
 func (s *UserSettings) Normalize() {
 	def := DefaultUserSettings(s.UserID)
 	if !validThemes[s.Theme] {
@@ -139,7 +136,7 @@ func (s *UserSettings) Normalize() {
 	}
 }
 
-// DevicePreference holds the per-device personalisation for one user.
+
 type DevicePreference struct {
 	UserID        string
 	DeviceID      string
@@ -154,8 +151,7 @@ type DevicePreference struct {
 	UpdatedAt     time.Time
 }
 
-// IsZeroValue reports whether the preference carries no customisation, in which
-// case the repository can drop the row instead of storing dead weight.
+
 func (p DevicePreference) IsZeroValue() bool {
 	return !p.Hidden && !p.Pinned &&
 		p.DisplayName == "" && p.Notes == "" &&
@@ -164,7 +160,7 @@ func (p DevicePreference) IsZeroValue() bool {
 		(p.MarkerColor == "" || p.MarkerColor == DefaultMarkerColor)
 }
 
-// Validate enforces the invariants of a device preference.
+
 func (p *DevicePreference) Validate() error {
 	if strings.TrimSpace(p.DeviceID) == "" {
 		return NewValidationError("deviceId", "device id is required")
@@ -195,7 +191,7 @@ func (p *DevicePreference) Validate() error {
 	return nil
 }
 
-// Icon is a user-uploaded marker image stored in the database.
+
 type Icon struct {
 	ID          string
 	UserID      string
