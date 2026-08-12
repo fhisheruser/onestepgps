@@ -13,18 +13,14 @@ import (
 	"fleetview/internal/config"
 )
 
-// RouterDeps are the constructor arguments of NewRouter.
+
 type RouterDeps struct {
 	Handlers *Handlers
 	Config   config.Config
 	Logger   *slog.Logger
 }
 
-// NewRouter builds the fully wired HTTP engine.
-//
-// Route shapes avoid Gin's static-vs-parameter conflicts by construction:
-// exports live under /export and bulk preference actions under their own verbs
-// instead of colliding with /devices/:deviceId.
+
 func NewRouter(deps RouterDeps) *gin.Engine {
 	cfg := deps.Config
 	log := deps.Logger
@@ -36,8 +32,6 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 
 	engine := gin.New()
 
-	// Gin trusts all proxies by default, which makes ClientIP() spoofable.
-	// Trust only what the operator configured.
 	if err := engine.SetTrustedProxies(cfg.TrustedProxies); err != nil {
 		log.Warn("failed to set trusted proxies", "error", err)
 	}
@@ -51,10 +45,7 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		SecurityHeaders(),
 		CORS(cfg.AllowedOrigins),
 		RequestLogger(log, "/healthz", "/readyz"),
-		// Cloud Run does not compress for us. The JS bundle is ~77 KB raw and
-		// ~24 KB gzipped, and that saving is per visitor. The WebSocket route
-		// is excluded because compressing a hijacked connection breaks the
-		// upgrade.
+	
 		gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedPaths([]string{"/api/v1/ws"})),
 		StaticCacheHeaders(),
 	)
@@ -95,12 +86,7 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 	return engine
 }
 
-// StaticCacheHeaders makes repeat visits nearly free.
-//
-// Vite fingerprints every file under /assets, so those bytes can never change
-// under the same URL and are safe to cache forever. index.html and the service
-// worker must never be cached, or a deploy would be invisible to anyone with a
-// warm cache.
+
 func StaticCacheHeaders() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
@@ -114,9 +100,7 @@ func StaticCacheHeaders() gin.HandlerFunc {
 	}
 }
 
-// registerStatic optionally serves a built single-page app from the same
-// origin, which turns the whole product into one deployable binary. In the
-// Docker Compose setup Nginx does this instead and StaticDir stays empty.
+
 func registerStatic(engine *gin.Engine, dir string, log *slog.Logger) {
 	if dir == "" {
 		return
@@ -137,8 +121,7 @@ func registerStatic(engine *gin.Engine, dir string, log *slog.Logger) {
 	log.Info("serving static frontend", "dir", dir)
 }
 
-// registerFallback returns index.html for unknown non-API paths so client-side
-// routing works on a hard refresh, and a JSON 404 for everything else.
+
 func registerFallback(engine *gin.Engine, dir string) {
 	indexPath := ""
 	if dir != "" {
