@@ -1,11 +1,3 @@
-/**
- * Pure formatting helpers shared by the list, the map and the CSV preview.
- *
- * Speeds arrive from the backend in whatever unit the provider reports
- * (labelled on every position), and the user picks the unit they want to read.
- * Conversion therefore belongs here, in the presentation layer, rather than
- * being baked into stored data.
- */
 
 const SPEED_TO_KPH = {
   'km/h': 1,
@@ -30,11 +22,7 @@ export const SPEED_UNIT_LABELS = {
   kn: 'kn',
 }
 
-/**
- * Convert a speed from the provider's unit into the user's preferred unit.
- * Unknown source units are passed through unchanged rather than silently
- * mangled — a wrong number is worse than an unconverted one.
- */
+
 export function convertSpeed(value, fromUnit, toUnit = 'mph') {
   if (!Number.isFinite(value)) return 0
   const from = SPEED_TO_KPH[String(fromUnit || '').toLowerCase()]
@@ -43,7 +31,6 @@ export function convertSpeed(value, fromUnit, toUnit = 'mph') {
   return value * from * to
 }
 
-/** Format a speed for display, including its unit label. */
 export function formatSpeed(value, fromUnit, toUnit = 'mph', { withUnit = true } = {}) {
   const converted = convertSpeed(value, fromUnit, toUnit)
   const rounded = converted >= 100 ? Math.round(converted) : Math.round(converted * 10) / 10
@@ -51,7 +38,7 @@ export function formatSpeed(value, fromUnit, toUnit = 'mph', { withUnit = true }
   return withUnit ? `${rounded} ${label}` : String(rounded)
 }
 
-/** Human "time ago" with a hard floor at "just now". */
+
 export function timeAgo(input, now = Date.now()) {
   if (!input) return 'never'
   const then = input instanceof Date ? input.getTime() : Date.parse(input)
@@ -72,7 +59,7 @@ export function timeAgo(input, now = Date.now()) {
   return new Date(then).toLocaleDateString()
 }
 
-/** Format a duration given in seconds as a compact "2h 14m". */
+
 export function formatDuration(seconds) {
   if (!Number.isFinite(seconds) || seconds <= 0) return '—'
   const total = Math.round(seconds)
@@ -86,7 +73,7 @@ export function formatDuration(seconds) {
   return `${total}s`
 }
 
-/** Absolute timestamp for tooltips and the detail panel. */
+
 export function formatTimestamp(input) {
   if (!input) return '—'
   const date = input instanceof Date ? input : new Date(input)
@@ -101,13 +88,13 @@ export function formatTimestamp(input) {
   })
 }
 
-/** Coordinates at the ~1 m precision a fleet operator actually needs. */
+
 export function formatCoords(lat, lng) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return '—'
   return `${lat.toFixed(5)}, ${lng.toFixed(5)}`
 }
 
-/** Compass point from a heading in degrees. */
+
 export function headingToCompass(deg) {
   if (!Number.isFinite(deg)) return '—'
   const points = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
@@ -125,13 +112,13 @@ export function driveStatusMeta(status) {
   return DRIVE_STATUS_META[status] || DRIVE_STATUS_META.unknown
 }
 
-/** Format an odometer reading with thousands separators. */
+
 export function formatOdometer(value, unit) {
   if (!Number.isFinite(value) || value <= 0) return '—'
   return `${Math.round(value).toLocaleString()}${unit ? ` ${unit}` : ''}`
 }
 
-/** Truncate long free text for compact rows without cutting mid-word. */
+
 export function truncate(text, max = 60) {
   const value = String(text ?? '')
   if (value.length <= max) return value
