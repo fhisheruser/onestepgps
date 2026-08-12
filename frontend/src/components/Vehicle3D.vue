@@ -1,27 +1,19 @@
 <script setup>
 import { computed } from 'vue'
 
-/**
- * A real 3D vehicle built from CSS `transform-style: preserve-3d` boxes.
- *
- * Deliberately dependency-free: a WebGL library would add hundreds of
- * kilobytes and a GPU context per card for what is, visually, a handful of
- * shaded rectangles. Each vehicle is a list of boxes positioned in model
- * space; the six faces of every box are absolutely positioned planes.
- */
 
 const props = defineProps({
   type: { type: String, default: 'car' },
   color: { type: String, default: '#B4643C' },
   size: { type: Number, default: 120 },
-  /** Yaw in degrees; wire this to a device heading to point the vehicle. */
+ 
   heading: { type: Number, default: -32 },
   spin: { type: Boolean, default: false },
-  /** Adds a soft contact shadow — off inside dense list rows. */
+
   shadow: { type: Boolean, default: true },
 })
 
-// Model space is 100 units long; `size` scales the whole rig.
+
 const PROFILES = {
   car: {
     boxes: [
@@ -107,7 +99,7 @@ const PROFILES = {
 const profile = computed(() => PROFILES[props.type] || PROFILES.car)
 const scale = computed(() => props.size / 100)
 
-/** Shade a hex colour by a signed percentage, for cheap per-face lighting. */
+
 function shade(hex, percent) {
   const normalised = hex.replace('#', '')
   const full =
@@ -144,7 +136,7 @@ function toneColor(tone) {
   }
 }
 
-/** Per-face brightness fakes a single light source from the upper front-left. */
+
 const FACE_LIGHT = {
   top: 0.16,
   bottom: -0.4,
@@ -238,7 +230,6 @@ const FACES = ['front', 'back', 'left', 'right', 'top', 'bottom']
   backface-visibility: hidden;
 }
 
-/* Each face is a plane pushed out to half the box depth along its own axis. */
 .face.front {
   width: var(--w);
   height: var(--h);
