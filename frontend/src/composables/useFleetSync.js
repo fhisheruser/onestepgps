@@ -4,15 +4,7 @@ import { usePreferencesStore } from '@/stores/preferences'
 import { useUiStore } from '@/stores/ui'
 import { ConnectionState, RealtimeClient } from '@/services/realtime'
 
-/**
- * Keeps the dashboard live.
- *
- * Strategy: prefer a WebSocket push (instant, one message per poll cycle) and
- * fall back to REST polling when the socket is not open. Both paths produce
- * the same feed shape, so the rest of the app cannot tell them apart. A slow
- * heartbeat poll runs even while the socket is healthy, which repairs the view
- * if a push is ever dropped.
- */
+
 export function useFleetSync() {
   const fleet = useFleetStore()
   const preferences = usePreferencesStore()
@@ -36,7 +28,7 @@ export function useFleetSync() {
     stopPolling()
     fleet.transport = 'polling'
     pollTimer.value = window.setInterval(() => {
-      // Skip work the user cannot see; the visibilitychange handler catches up.
+      
       if (document.visibilityState === 'hidden') return
       void fleet.fetchFeed({ silent: true })
     }, refreshSeconds() * 1000)
@@ -44,7 +36,7 @@ export function useFleetSync() {
 
   function startHeartbeat() {
     if (heartbeatTimer.value) window.clearInterval(heartbeatTimer.value)
-    // Six poll intervals: cheap insurance against a lost push, not a poll loop.
+   
     heartbeatTimer.value = window.setInterval(() => {
       if (fleet.transport === 'realtime' && document.visibilityState === 'visible') {
         void fleet.fetchFeed({ silent: true })
@@ -77,7 +69,7 @@ export function useFleetSync() {
       return
     }
 
-    // Any non-open state means we cannot rely on pushes: poll instead.
+   
     if (fleet.transport !== 'polling') {
       fleet.transport = 'polling'
     }
@@ -98,7 +90,7 @@ export function useFleetSync() {
 
   function onVisibilityChange() {
     if (document.visibilityState !== 'visible') return
-    // Coming back to the tab: repaint immediately rather than waiting a tick.
+   
     void fleet.fetchFeed({ silent: true })
     if (fleet.transport !== 'realtime') client.value?.connect()
   }
@@ -108,7 +100,7 @@ export function useFleetSync() {
     try {
       await preferences.load()
     } catch {
-      // Preferences are optional for a first render; the feed carries settings.
+     
     }
     await fleet.fetchFeed()
 
@@ -124,8 +116,7 @@ export function useFleetSync() {
     }
   }
 
-  // Filter changes go to both transports: the socket so pushes arrive
-  // pre-filtered, and a debounced fetch so typing feels instant.
+  
   watch(
     () => fleet.realtimeQuery,
     (query) => {
@@ -138,7 +129,7 @@ export function useFleetSync() {
     { deep: true },
   )
 
-  // Honour a changed refresh interval without a page reload.
+  
   watch(
     () => preferences.settings.refreshSeconds,
     () => {
