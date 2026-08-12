@@ -2,14 +2,12 @@ package domain
 
 import "time"
 
-// DeviceView is a live device merged with the requesting user's preferences.
-// It is the unit the API serves and the UI renders.
+
 type DeviceView struct {
 	Device
 
-	// DisplayName is the user's custom name when set, otherwise Device.Name.
 	DisplayName string
-	// Renamed reports whether DisplayName came from a preference.
+	
 	Renamed bool
 
 	Hidden        bool
@@ -21,7 +19,7 @@ type DeviceView struct {
 	SortIndex     int
 }
 
-// FleetSummary is the aggregate state of the fleet shown in the header KPIs.
+
 type FleetSummary struct {
 	Total       int
 	Visible     int
@@ -37,7 +35,7 @@ type FleetSummary struct {
 	Stale       bool
 }
 
-// StatusFilter narrows a device query to a subset of drive/connection states.
+
 type StatusFilter string
 
 const (
@@ -49,8 +47,7 @@ const (
 	StatusOffline StatusFilter = "offline"
 )
 
-// DeviceQuery captures the filtering/sorting a caller asked for. Zero values
-// mean "use the user's stored preference", which is resolved in the service.
+
 type DeviceQuery struct {
 	Search        string
 	Status        StatusFilter
@@ -60,7 +57,6 @@ type DeviceQuery struct {
 	OnlyPinned    bool
 }
 
-// Matches reports whether a device passes the status filter.
 func (q DeviceQuery) Matches(d DeviceView) bool {
 	switch q.Status {
 	case StatusDriving:
