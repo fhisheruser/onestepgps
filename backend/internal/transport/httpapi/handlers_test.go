@@ -104,7 +104,7 @@ func newHarness(t *testing.T) *harness {
 	return h
 }
 
-// seed publishes a small, predictable fleet into the cache.
+
 func (h *harness) seed() {
 	h.cache.Set(domain.Snapshot{
 		FetchedAt: fixedNow.Add(-4 * time.Second),
@@ -153,7 +153,7 @@ func decodeFeed(t *testing.T, rec *httptest.ResponseRecorder) dto.Feed {
 	return feed
 }
 
-// ---------------------------------------------------------------------------
+
 
 func TestListDevices_ReturnsMergedFeed(t *testing.T) {
 	h := newHarness(t)
@@ -192,7 +192,7 @@ func TestListDevices_FiltersAndSorts(t *testing.T) {
 	require.Len(t, feed.Devices, 2)
 	assert.Equal(t, "Van 12", feed.Devices[0].Name)
 
-	// Unknown filter values are ignored rather than rejected.
+
 	rec = h.do(t, http.MethodGet, "/api/v1/devices?sort=bogus&status=bogus", nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Len(t, decodeFeed(t, rec).Devices, 2)
@@ -281,7 +281,7 @@ func TestSettings_UpdateAndNormalise(t *testing.T) {
 	assert.Equal(t, domain.MaxRefreshSeconds, settings.RefreshSeconds, "out-of-range values are clamped")
 	assert.True(t, settings.ShowTrails)
 
-	// The stored setting drives the feed's default ordering.
+
 	rec = h.do(t, http.MethodPut, "/api/v1/preferences/settings", map[string]any{"sortKey": "name", "sortDirection": "desc"})
 	require.Equal(t, http.StatusOK, rec.Code)
 	feed := decodeFeed(t, h.do(t, http.MethodGet, "/api/v1/devices", nil))
@@ -298,7 +298,7 @@ func TestSettings_HideOfflineDevices(t *testing.T) {
 	require.Len(t, feed.Devices, 1)
 	assert.Equal(t, "d1", feed.Devices[0].ID)
 
-	// An explicit filter still wins over the stored preference.
+
 	feed = decodeFeed(t, h.do(t, http.MethodGet, "/api/v1/devices?status=all", nil))
 	assert.Len(t, feed.Devices, 2)
 }
@@ -372,23 +372,23 @@ func TestIconUpload_AcceptsPNGAndRejectsJunk(t *testing.T) {
 	assert.Equal(t, "custom", pref.MarkerIcon)
 	require.True(t, strings.HasPrefix(pref.CustomIconURL, "/api/v1/icons/"))
 
-	// The uploaded image is served back with hardening headers.
+
 	iconRec := h.do(t, http.MethodGet, pref.CustomIconURL, nil)
 	require.Equal(t, http.StatusOK, iconRec.Code)
 	assert.Equal(t, "image/png", iconRec.Header().Get("Content-Type"))
 	assert.Equal(t, "nosniff", iconRec.Header().Get("X-Content-Type-Options"))
 	assert.Contains(t, iconRec.Header().Get("Content-Security-Policy"), "default-src 'none'")
 
-	// The feed now points at the custom marker.
+
 	feed := decodeFeed(t, h.do(t, http.MethodGet, "/api/v1/devices", nil))
 	assert.Equal(t, "custom", feed.Devices[0].Preferences.MarkerIcon)
 
-	// A file that merely claims to be a PNG is rejected on its bytes.
+
 	rec = h.upload(t, "/api/v1/preferences/devices/d2/icon", "evil.png", "image/png",
 		[]byte("<svg xmlns='http://www.w3.org/2000/svg'><script>alert(1)</script></svg>"))
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 
-	// Removing the icon reverts to a built-in marker.
+
 	rec = h.do(t, http.MethodDelete, "/api/v1/preferences/devices/d1/icon", nil)
 	require.Equal(t, http.StatusOK, rec.Code)
 	feed = decodeFeed(t, h.do(t, http.MethodGet, "/api/v1/devices", nil))
@@ -423,13 +423,12 @@ func (h *harness) uploadAs(t *testing.T, userID, path, filename, contentType str
 	return rec
 }
 
-// An uploader can invent unlimited device ids, and on an ephemeral container
-// filling the disk means taking the service down. The quota bounds that.
+
 func TestIconUpload_EnforcesPerUserQuota(t *testing.T) {
 	h := newHarness(t)
 	png := minimalPNG()
 
-	// The harness allows 3 icons per user.
+
 	for i := 0; i < 3; i++ {
 		rec := h.upload(t, fmt.Sprintf("/api/v1/preferences/devices/dev-%d/icon", i), "m.png", "image/png", png)
 		require.Equal(t, http.StatusOK, rec.Code, "upload %d should fit inside the quota", i)
@@ -439,18 +438,15 @@ func TestIconUpload_EnforcesPerUserQuota(t *testing.T) {
 	require.Equal(t, http.StatusUnprocessableEntity, rec.Code, "the 4th new device must be refused")
 	assert.Contains(t, rec.Body.String(), "upload limit reached")
 
-	// Replacing an icon on a device that already has one is not a new upload
-	// and must keep working even at the quota.
+
 	rec = h.upload(t, "/api/v1/preferences/devices/dev-0/icon", "m.png", "image/png", png)
 	assert.Equal(t, http.StatusOK, rec.Code, "replacing an existing icon must not trip the quota")
 
-	// The quota is per user, so another user still has a full allowance.
+
 	rec = h.uploadAs(t, "bob", "/api/v1/preferences/devices/dev-99/icon", "m.png", "image/png", png)
 	assert.Equal(t, http.StatusOK, rec.Code, "one user's quota must not exhaust another's")
 }
 
-// minimalPNG is a valid 1x1 PNG, used to prove uploads are accepted on their
-// bytes rather than their filename.
 func minimalPNG() []byte {
 	return []byte{
 		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
@@ -505,7 +501,7 @@ func TestHealthAndReadiness(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), `"status":"ready"`)
 
-	// Before the first snapshot lands the service is not ready.
+	
 	empty := newHarness(t)
 	empty.cache.Set(domain.Snapshot{})
 	rec = empty.do(t, http.MethodGet, "/readyz", nil)
@@ -547,9 +543,7 @@ func TestCORSAndUnknownRoutes(t *testing.T) {
 	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
 }
 
-// A crowd of readers must never be throttled: reads come from an in-memory
-// snapshot, and rate-limiting them turns a traffic spike into an outage.
-// Writes touch SQLite and stay limited.
+
 func TestRateLimit_ExemptsReadsAndKeysOnRealClient(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -568,20 +562,19 @@ func TestRateLimit_ExemptsReadsAndKeysOnRealClient(t *testing.T) {
 		return rec.Code
 	}
 
-	// Reads are never limited, however many arrive.
+	
 	for i := 0; i < 50; i++ {
 		require.Equal(t, http.StatusOK, call(http.MethodGet, "/read", ""), "read %d was throttled", i)
 	}
 
-	// Writes from one client exhaust that client's bucket...
+	
 	assert.Equal(t, http.StatusOK, call(http.MethodPut, "/write", "203.0.113.7"))
 	assert.Equal(t, http.StatusTooManyRequests, call(http.MethodPut, "/write", "203.0.113.7"))
 
-	// ...without touching a different client behind the same proxy. This is
-	// the bug that made one bucket serve the whole internet on Cloud Run.
+
 	assert.Equal(t, http.StatusOK, call(http.MethodPut, "/write", "198.51.100.4"))
 
-	// A proxy chain reports the originating client first.
+
 	assert.Equal(t, http.StatusOK, call(http.MethodPut, "/write", "198.51.100.9, 10.0.0.1"))
 }
 
