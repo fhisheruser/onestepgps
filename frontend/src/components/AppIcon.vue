@@ -1,10 +1,6 @@
 <script setup>
 import { computed } from 'vue'
 
-/**
- * Inline SVG icon set. Bundling ~25 paths costs under 3 KB, which is far less
- * than any icon package, and it keeps the app free of a runtime font request.
- */
 
 const props = defineProps({
   name: { type: String, required: true },
