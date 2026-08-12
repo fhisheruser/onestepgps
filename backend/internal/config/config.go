@@ -1,6 +1,4 @@
-// Package config loads and validates runtime configuration from the
-// environment (optionally seeded from a .env file). Nothing else in the
-// application reads os.Getenv, so every knob is discoverable in one place.
+
 package config
 
 import (
@@ -13,7 +11,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Config is the fully resolved application configuration.
+
 type Config struct {
 	Env             string
 	HTTPAddr        string
@@ -28,89 +26,80 @@ type Config struct {
 	Maps            Maps
 	Icons           Icons
 	RateLimit       RateLimit
-	// StaticDir optionally serves a built frontend from the same origin,
-	// collapsing the whole product into a single binary. Empty in the Compose
-	// setup, where Nginx serves the SPA.
+
 	StaticDir string
 	Version   string
 }
 
-// Log controls the structured logger.
+
 type Log struct {
 	Level  string
-	Format string // "json" or "text"
+	Format string 
 }
 
-// OneStepGPS holds upstream provider settings.
+
 type OneStepGPS struct {
 	BaseURL string
 	APIKey  string
 	Timeout time.Duration
-	// MaxAttempts includes the first try, so 3 means "try, retry, retry".
+	
 	MaxAttempts  int
 	RetryBackoff time.Duration
-	// SpeedUnit labels the speed values returned by the provider. It is a
-	// label only: no conversion happens on the server, the UI converts to the
-	// user's preferred unit.
+	
 	SpeedUnit string
-	// DemoMode swaps the live client for a deterministic simulator.
+	
 	DemoMode bool
 }
 
-// Database holds persistence settings.
+
 type Database struct {
 	Path        string
 	AutoMigrate bool
 	LogQueries  bool
 }
 
-// Poller controls the background refresh loop.
+
 type Poller struct {
 	Interval time.Duration
-	// Timeout bounds a single refresh cycle including the client's retries.
-	// Zero means "three times the interval".
+	
 	Timeout time.Duration
-	// FailureThreshold is how many consecutive failures may occur before the
-	// service reports itself unhealthy.
+	
 	FailureThreshold int
 }
 
-// History controls breadcrumb persistence.
+
 type History struct {
 	Enabled       bool
 	Retention     time.Duration
 	PruneInterval time.Duration
-	// MinDistanceMeters suppresses breadcrumbs for a parked vehicle.
+	
 	MinDistanceMeters float64
 	MaxPointsPerQuery int
 }
 
-// Maps holds the values handed to the browser at runtime. The Google Maps
-// JavaScript key is public by design (it is restricted by HTTP referrer);
-// the OneStepGPS key by contrast never leaves the server.
+
 type Maps struct {
 	APIKey string
 	MapID  string
 }
 
-// Icons constrains marker image uploads.
+
 type Icons struct {
 	MaxBytes     int64
 	MaxPerUser   int
 	AllowedTypes []string
 }
 
-// RateLimit protects the API from runaway clients.
+
 type RateLimit struct {
 	Enabled bool
 	RPS     float64
 	Burst   int
 }
 
-// Load resolves configuration from .env (if present) plus the environment.
-// Later sources win: real environment variables always override the file.
+
 func Load() (Config, error) {
-	// A missing .env is normal in Docker/production; only surface real errors.
+	
 	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
 		if _, statErr := os.Stat(".env"); statErr == nil {
 			return Config{}, fmt.Errorf("parse .env: %w", err)
@@ -119,8 +108,7 @@ func Load() (Config, error) {
 
 	cfg := Config{
 		Env: env("APP_ENV", "development"),
-		// Cloud Run, Heroku and friends inject PORT and expect the process to
-		// listen on it. HTTP_ADDR stays the explicit override for everything else.
+		
 		HTTPAddr:        env("HTTP_ADDR", ":"+env("PORT", "8080")),
 		ShutdownTimeout: envDuration("SHUTDOWN_TIMEOUT", 15*time.Second),
 		AllowedOrigins:  envList("CORS_ALLOWED_ORIGINS", []string{"http://localhost:5173", "http://localhost:3000", "http://localhost:8081"}),
@@ -147,7 +135,7 @@ func Load() (Config, error) {
 		},
 		Poller: Poller{
 			Interval:         envDuration("POLL_INTERVAL", 10*time.Second),
-			Timeout:          envDuration("POLL_TIMEOUT", 0), // 0 => 3x interval
+			Timeout:          envDuration("POLL_TIMEOUT", 0), 
 			FailureThreshold: envInt("POLL_FAILURE_THRESHOLD", 3),
 		},
 		History: History{
@@ -163,11 +151,9 @@ func Load() (Config, error) {
 		},
 		Icons: Icons{
 			MaxBytes: int64(envInt("ICON_MAX_BYTES", 256*1024)),
-			// Caps disk growth from a caller inventing device ids.
+			
 			MaxPerUser: envInt("ICON_MAX_PER_USER", 50),
-			// SVG is deliberately absent: an attacker-supplied SVG served from
-			// our own origin can execute script. Add it here only behind a
-			// sanitiser you trust.
+			
 			AllowedTypes: envList("ICON_ALLOWED_TYPES", []string{"image/png", "image/jpeg", "image/webp", "image/gif"}),
 		},
 		RateLimit: RateLimit{
@@ -177,9 +163,7 @@ func Load() (Config, error) {
 		},
 	}
 
-	// Running without credentials is a supported mode: fall back to the
-	// simulator rather than refusing to boot, so the dashboard is always
-	// explorable. The caller logs a prominent warning.
+	
 	if cfg.OneStepGPS.APIKey == "" {
 		cfg.OneStepGPS.DemoMode = true
 	}
@@ -187,7 +171,6 @@ func Load() (Config, error) {
 	return cfg, cfg.Validate()
 }
 
-// Validate rejects configurations that could not possibly work.
 func (c Config) Validate() error {
 	if c.HTTPAddr == "" {
 		return fmt.Errorf("HTTP_ADDR must not be empty")
@@ -207,7 +190,7 @@ func (c Config) Validate() error {
 	return nil
 }
 
-// IsProduction reports whether the app runs with production defaults.
+
 func (c Config) IsProduction() bool {
 	return strings.EqualFold(c.Env, "production") || strings.EqualFold(c.Env, "prod")
 }
@@ -248,8 +231,7 @@ func envDuration(key string, fallback time.Duration) time.Duration {
 	if d, err := time.ParseDuration(raw); err == nil {
 		return d
 	}
-	// Bare numbers are interpreted as seconds, which is what most people mean
-	// when they write POLL_INTERVAL=10.
+	
 	if secs, err := strconv.Atoi(raw); err == nil {
 		return time.Duration(secs) * time.Second
 	}
