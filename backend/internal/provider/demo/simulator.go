@@ -1,6 +1,4 @@
-// Package demo provides a deterministic domain.DeviceProvider used when no
-// OneStepGPS credentials are configured. It keeps the dashboard fully
-// explorable (and the end-to-end tests hermetic) without a live account.
+
 package demo
 
 import (
@@ -12,7 +10,7 @@ import (
 	"fleetview/internal/domain"
 )
 
-// vehicle describes one simulated asset moving on a closed loop.
+
 type vehicle struct {
 	id       string
 	name     string
@@ -21,25 +19,24 @@ type vehicle struct {
 	group    string
 	centerLat float64
 	centerLng float64
-	// radiusDeg is the loop radius in degrees of latitude (~111 km per degree).
+	
 	radiusDeg float64
-	// periodSec is how long one full loop takes.
+
 	periodSec float64
 	phase     float64
-	// behaviour selects a fixed drive status; -1 means "derive from movement".
+
 	behaviour int
 	odometer  float64
 }
 
-// Simulator implements domain.DeviceProvider with synthetic data.
+
 type Simulator struct {
 	vehicles  []vehicle
 	speedUnit string
 	clock     domain.Clock
 }
 
-// New returns a simulator seeded with a small, varied fleet around San Diego,
-// which is where the OneStepGPS demo account's vehicles live.
+
 func New(speedUnit string, clock domain.Clock) *Simulator {
 	if speedUnit == "" {
 		speedUnit = "km/h"
@@ -65,11 +62,10 @@ func New(speedUnit string, clock domain.Clock) *Simulator {
 	}
 }
 
-// Name implements domain.DeviceProvider.
+
 func (s *Simulator) Name() string { return "demo-simulator" }
 
-// FetchDevices returns the fleet state for the current instant. It is a pure
-// function of the clock, so it is safe for concurrent use and reproducible.
+
 func (s *Simulator) FetchDevices(_ context.Context) ([]domain.Device, error) {
 	now := s.clock.Now()
 	devices := make([]domain.Device, 0, len(s.vehicles))
@@ -79,7 +75,7 @@ func (s *Simulator) FetchDevices(_ context.Context) ([]domain.Device, error) {
 	return devices, nil
 }
 
-// at evaluates the vehicle's state at time t.
+
 func (v vehicle) at(t time.Time, speedUnit string) domain.Device {
 	seconds := float64(t.UnixNano()) / float64(time.Second)
 	omega := 2 * math.Pi / v.periodSec
@@ -87,8 +83,7 @@ func (v vehicle) at(t time.Time, speedUnit string) domain.Device {
 	lat, lng := v.positionAt(seconds, omega)
 	prevLat, prevLng := v.positionAt(seconds-1, omega)
 
-	// Deriving speed and heading from the actual displacement keeps every
-	// reported value mutually consistent.
+
 	speedKPH := haversineMeters(prevLat, prevLng, lat, lng) * 3.6
 	heading := bearing(prevLat, prevLng, lat, lng)
 
@@ -102,8 +97,7 @@ func (v vehicle) at(t time.Time, speedUnit string) domain.Device {
 		speedKPH = 0
 		heading = 0
 	default:
-		// Every loop, each vehicle pauses for a stretch so the UI shows a mix
-		// of states instead of a fleet that is always driving.
+	
 		cycle := math.Mod(seconds/v.periodSec+v.phase, 1.0)
 		if cycle > 0.82 {
 			status = domain.DriveStatusIdle
@@ -142,13 +136,13 @@ func (v vehicle) at(t time.Time, speedUnit string) domain.Device {
 func (v vehicle) positionAt(seconds, omega float64) (lat, lng float64) {
 	angle := seconds*omega + v.phase
 	lat = v.centerLat + v.radiusDeg*math.Sin(angle)
-	// Longitude degrees shrink with latitude, so scale to keep a round loop.
+	
 	lngScale := 1 / math.Max(0.1, math.Cos(v.centerLat*math.Pi/180))
 	lng = v.centerLng + v.radiusDeg*math.Cos(angle)*lngScale
 	return lat, lng
 }
 
-// haversineMeters returns the great-circle distance between two coordinates.
+
 func haversineMeters(lat1, lng1, lat2, lng2 float64) float64 {
 	const earthRadiusM = 6371000.0
 	rad := math.Pi / 180
@@ -159,7 +153,7 @@ func haversineMeters(lat1, lng1, lat2, lng2 float64) float64 {
 	return 2 * earthRadiusM * math.Asin(math.Min(1, math.Sqrt(a)))
 }
 
-// bearing returns the initial compass bearing from point 1 to point 2.
+
 func bearing(lat1, lng1, lat2, lng2 float64) float64 {
 	rad := math.Pi / 180
 	y := math.Sin((lng2-lng1)*rad) * math.Cos(lat2*rad)
@@ -169,8 +163,7 @@ func bearing(lat1, lng1, lat2, lng2 float64) float64 {
 	return math.Mod(deg+360, 360)
 }
 
-// convertSpeed renders a km/h value in the unit the provider claims to use, so
-// the simulator is indistinguishable from the real provider downstream.
+
 func convertSpeed(kph float64, unit string) float64 {
 	switch unit {
 	case "mph":
