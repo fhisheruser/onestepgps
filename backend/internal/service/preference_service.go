@@ -11,9 +11,7 @@ import (
 	"fleetview/internal/domain"
 )
 
-// SettingsPatch is a partial update of fleet-wide settings. Pointer fields
-// distinguish "not supplied" from "set to the zero value", which is what makes
-// a boolean like ShowOfflineDevices safely togglable.
+
 type SettingsPatch struct {
 	Theme              *string
 	SortKey            *string
@@ -28,7 +26,7 @@ type SettingsPatch struct {
 	RefreshSeconds     *int
 }
 
-// DevicePreferencePatch is a partial update of one device's personalisation.
+
 type DevicePreferencePatch struct {
 	Hidden      *bool
 	DisplayName *string
@@ -39,13 +37,13 @@ type DevicePreferencePatch struct {
 	Notes       *string
 }
 
-// Preferences bundles everything the preferences endpoint returns.
+
 type Preferences struct {
 	Settings domain.UserSettings
 	Devices  []domain.DevicePreference
 }
 
-// PreferenceServiceDeps are the collaborators of PreferenceService.
+
 type PreferenceServiceDeps struct {
 	Repo             domain.PreferenceRepository
 	Icons            domain.IconRepository
@@ -56,8 +54,7 @@ type PreferenceServiceDeps struct {
 	IconURLPrefix    string
 }
 
-// PreferenceService is the write side of the application: it validates and
-// persists everything the user personalises.
+
 type PreferenceService struct {
 	repo            domain.PreferenceRepository
 	icons           domain.IconRepository
@@ -68,7 +65,7 @@ type PreferenceService struct {
 	iconURLPrefix   string
 }
 
-// NewPreferenceService wires a PreferenceService.
+
 func NewPreferenceService(deps PreferenceServiceDeps) *PreferenceService {
 	if deps.Clock == nil {
 		deps.Clock = domain.SystemClock{}
@@ -101,7 +98,7 @@ func NewPreferenceService(deps PreferenceServiceDeps) *PreferenceService {
 	}
 }
 
-// Get returns the full preference document for a user.
+
 func (s *PreferenceService) Get(ctx context.Context, userID string) (Preferences, error) {
 	settings, err := s.repo.GetSettings(ctx, userID)
 	if err != nil {
@@ -114,7 +111,7 @@ func (s *PreferenceService) Get(ctx context.Context, userID string) (Preferences
 	return Preferences{Settings: settings, Devices: devices}, nil
 }
 
-// UpdateSettings applies a patch to the user's fleet-wide settings.
+
 func (s *PreferenceService) UpdateSettings(ctx context.Context, userID string, patch SettingsPatch) (domain.UserSettings, error) {
 	settings, err := s.repo.GetSettings(ctx, userID)
 	if err != nil {
@@ -165,7 +162,7 @@ func (s *PreferenceService) UpdateSettings(ctx context.Context, userID string, p
 	return settings, nil
 }
 
-// UpsertDevicePreference applies a patch to one device's personalisation.
+
 func (s *PreferenceService) UpsertDevicePreference(ctx context.Context, userID, deviceID string, patch DevicePreferencePatch) (domain.DevicePreference, error) {
 	pref, err := s.repo.GetDevicePreference(ctx, userID, deviceID)
 	if err != nil {
@@ -207,8 +204,7 @@ func (s *PreferenceService) UpsertDevicePreference(ctx context.Context, userID, 
 	return pref, nil
 }
 
-// Reorder persists an explicit drag-and-drop ordering and switches the user's
-// sort to "custom" so the new order actually takes effect.
+
 func (s *PreferenceService) Reorder(ctx context.Context, userID string, deviceIDs []string) error {
 	for index, deviceID := range deviceIDs {
 		if strings.TrimSpace(deviceID) == "" {
@@ -226,7 +222,7 @@ func (s *PreferenceService) Reorder(ctx context.Context, userID string, deviceID
 	return nil
 }
 
-// DeleteDevicePreference resets one device back to its defaults.
+
 func (s *PreferenceService) DeleteDevicePreference(ctx context.Context, userID, deviceID string) error {
 	if s.icons != nil {
 		if err := s.icons.DeleteForDevice(ctx, userID, deviceID); err != nil {
@@ -236,13 +232,12 @@ func (s *PreferenceService) DeleteDevicePreference(ctx context.Context, userID, 
 	return s.repo.DeleteDevicePreference(ctx, userID, deviceID)
 }
 
-// Reset removes every customisation belonging to a user.
+
 func (s *PreferenceService) Reset(ctx context.Context, userID string) error {
 	return s.repo.Reset(ctx, userID)
 }
 
-// SaveIcon validates and stores a marker image, then points the device's
-// preference at it. Returns the updated preference.
+
 func (s *PreferenceService) SaveIcon(ctx context.Context, userID, deviceID, declaredType string, data []byte) (domain.DevicePreference, error) {
 	if s.icons == nil {
 		return domain.DevicePreference{}, domain.NewValidationError("icon", "icon uploads are disabled")
@@ -255,9 +250,7 @@ func (s *PreferenceService) SaveIcon(ctx context.Context, userID, deviceID, decl
 			fmt.Sprintf("file is larger than %d KB", s.maxIconBytes/1024))
 	}
 
-	// Trust the bytes, not the client: sniff the real content type and require
-	// that it is an allowed raster image. SVG is rejected by default because
-	// serving attacker-supplied SVG from our own origin is an XSS vector.
+
 	sniffed := normaliseContentType(http.DetectContentType(data))
 	declared := normaliseContentType(declaredType)
 	if !s.allowedTypes[sniffed] {
@@ -273,15 +266,12 @@ func (s *PreferenceService) SaveIcon(ctx context.Context, userID, deviceID, decl
 		return domain.DevicePreference{}, err
 	}
 
-	// One icon per device: drop the previous image so uploads cannot pile up.
+	
 	if err := s.icons.DeleteForDevice(ctx, userID, deviceID); err != nil {
 		return domain.DevicePreference{}, fmt.Errorf("replace icon: %w", err)
 	}
 
-	// Quota is checked *after* the replace so re-uploading to a device that
-	// already has an icon never trips it — only genuinely new devices count.
-	// Without this an uploader can invent unlimited device ids and fill the
-	// disk, which on an ephemeral container means taking the service down.
+	
 	count, err := s.icons.CountForUser(ctx, userID)
 	if err != nil {
 		return domain.DevicePreference{}, fmt.Errorf("check icon quota: %w", err)
@@ -322,7 +312,7 @@ func (s *PreferenceService) SaveIcon(ctx context.Context, userID, deviceID, decl
 	return pref, nil
 }
 
-// DeleteIcon removes a custom marker image and reverts to a built-in icon.
+
 func (s *PreferenceService) DeleteIcon(ctx context.Context, userID, deviceID string) (domain.DevicePreference, error) {
 	if s.icons != nil {
 		if err := s.icons.DeleteForDevice(ctx, userID, deviceID); err != nil {
@@ -346,7 +336,7 @@ func (s *PreferenceService) DeleteIcon(ctx context.Context, userID, deviceID str
 	return pref, nil
 }
 
-// Icon returns a stored marker image for serving.
+
 func (s *PreferenceService) Icon(ctx context.Context, id string) (domain.Icon, error) {
 	if s.icons == nil {
 		return domain.Icon{}, domain.ErrNotFound
@@ -354,13 +344,13 @@ func (s *PreferenceService) Icon(ctx context.Context, id string) (domain.Icon, e
 	return s.icons.Get(ctx, id)
 }
 
-// normaliseContentType strips parameters such as "; charset=utf-8".
+
 func normaliseContentType(raw string) string {
 	base, _, _ := strings.Cut(strings.ToLower(strings.TrimSpace(raw)), ";")
 	return strings.TrimSpace(base)
 }
 
-// newID returns a URL-safe random identifier.
+
 func newID() (string, error) {
 	buf := make([]byte, 16)
 	if _, err := rand.Read(buf); err != nil {
