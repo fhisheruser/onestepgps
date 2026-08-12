@@ -12,7 +12,7 @@ import (
 	"fleetview/internal/transport/dto"
 )
 
-// writeError renders the single error shape the frontend understands.
+
 func writeError(c *gin.Context, status int, code, message, field string) {
 	c.JSON(status, dto.Envelope{Error: &dto.APIError{
 		Code:    code,
@@ -21,16 +21,14 @@ func writeError(c *gin.Context, status int, code, message, field string) {
 	}})
 }
 
-// respondError maps a domain or infrastructure error onto an HTTP response.
-// Internal details are logged, never returned: clients get a stable code and a
-// message safe to show a user.
+
 func respondError(c *gin.Context, log *slog.Logger, err error) {
 	switch {
 	case err == nil:
 		return
 
 	case errors.Is(err, context.Canceled):
-		// The client hung up; nothing to report.
+	
 		c.Abort()
 		return
 
