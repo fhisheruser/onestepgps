@@ -12,7 +12,7 @@ import (
 	"fleetview/internal/domain"
 )
 
-// client is one live browser connection.
+
 type client struct {
 	hub    *Hub
 	conn   *websocket.Conn
@@ -23,7 +23,7 @@ type client struct {
 	query domain.DeviceQuery
 }
 
-// inboundMessage is the (small) control protocol a client may speak.
+
 type inboundMessage struct {
 	Type string `json:"type"`
 	Data struct {
@@ -36,7 +36,7 @@ type inboundMessage struct {
 	} `json:"data"`
 }
 
-// snapshotQuery returns a copy of the client's current filter.
+
 func (c *client) snapshotQuery() domain.DeviceQuery {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -49,12 +49,10 @@ func (c *client) setQuery(q domain.DeviceQuery) {
 	c.mu.Unlock()
 }
 
-// enqueue queues a frame, dropping the client if it cannot keep up. A slow
-// consumer must never apply backpressure to the poller.
+
 func (c *client) enqueue(frame []byte) {
 	defer func() {
-		// enqueue can race with hub.remove closing the channel; recovering is
-		// cheaper than holding the hub lock for the whole fan-out.
+		
 		_ = recover()
 	}()
 
@@ -66,8 +64,7 @@ func (c *client) enqueue(frame []byte) {
 	}
 }
 
-// readPump consumes control frames and keeps the read deadline fresh. It also
-// owns deregistration: when it returns, the connection is finished.
+
 func (c *client) readPump() {
 	defer func() {
 		c.hub.remove(c)
@@ -96,8 +93,7 @@ func (c *client) readPump() {
 
 		switch msg.Type {
 		case "query":
-			// The client mirrors its list filters onto the socket so pushes
-			// arrive pre-filtered and the UI never has to re-sort.
+			
 			c.setQuery(domain.DeviceQuery{
 				Search:        msg.Data.Search,
 				Status:        domain.StatusFilter(strings.ToLower(msg.Data.Status)),
@@ -107,8 +103,7 @@ func (c *client) readPump() {
 				OnlyPinned:    msg.Data.OnlyPinned,
 			})
 		case "refresh":
-			// Client asked for an out-of-band render (e.g. after saving a
-			// preference) — answer from cache, no upstream call involved.
+			
 			go func() {
 				ctx, cancel := contextWithTimeout()
 				defer cancel()
@@ -120,8 +115,7 @@ func (c *client) readPump() {
 	}
 }
 
-// writePump serialises all writes onto the connection, which gorilla requires,
-// and emits pings so dead peers are detected promptly.
+
 func (c *client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
@@ -149,7 +143,7 @@ func (c *client) writePump() {
 	}
 }
 
-// contextWithTimeout bounds an out-of-band feed render triggered by a client.
+
 func contextWithTimeout() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), 5*time.Second)
 }
