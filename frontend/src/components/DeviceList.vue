@@ -10,7 +10,7 @@ const emit = defineEmits(['edit'])
 const fleet = useFleetStore()
 const preferences = usePreferencesStore()
 
-// One shared clock for every row, rather than a timer per card.
+
 const now = ref(Date.now())
 const ticker = window.setInterval(() => {
   now.value = Date.now()
@@ -21,7 +21,7 @@ const speedUnit = computed(() => preferences.settings.speedUnit || 'mph')
 const reorderable = computed(() => (fleet.filters.sortKey || preferences.settings.sortKey) === 'custom')
 const showSkeletons = computed(() => fleet.loading && !fleet.initialised)
 
-// ---- Drag to reorder -------------------------------------------------------
+
 const dragId = ref(null)
 const dragOverId = ref(null)
 
@@ -29,7 +29,7 @@ function onDragStart(event, device) {
   if (!reorderable.value) return
   dragId.value = device.id
   event.dataTransfer.effectAllowed = 'move'
-  // Firefox requires data to be set for a drag to start at all.
+
   event.dataTransfer.setData('text/plain', device.id)
 }
 
