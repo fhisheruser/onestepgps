@@ -55,7 +55,7 @@ function openDetailFor(device) {
     </p>
 
     <div class="relative flex min-h-0 flex-1">
-      <!-- Vehicle list: a docked column on desktop, a drawer on small screens. -->
+     
       <aside
         class="absolute inset-y-0 left-0 z-20 flex w-[min(22rem,88vw)] flex-col border-r border-sand-300/80
                bg-sand-100/95 backdrop-blur-md transition-transform duration-300 ease-smooth
@@ -70,7 +70,7 @@ function openDetailFor(device) {
         <DeviceList class="min-h-0 flex-1" @edit="openDetailFor" />
       </aside>
 
-      <!-- Scrim closes the drawer on mobile. -->
+    
       <button
         v-if="ui.sidebarOpen"
         type="button"
