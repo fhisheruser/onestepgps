@@ -1,6 +1,4 @@
-// Package onestepgps implements domain.DeviceProvider against the OneStepGPS
-// public device API. The API key lives here and here only: it is read from the
-// environment on the server and never reaches the browser.
+
 package onestepgps
 
 import (
@@ -20,11 +18,9 @@ import (
 	"fleetview/internal/domain"
 )
 
-// maxResponseBytes caps how much of an upstream response we will buffer, so a
-// pathological payload cannot exhaust memory.
-const maxResponseBytes = 32 << 20 // 32 MiB
 
-// Options configures a Client.
+const maxResponseBytes = 32 << 20 
+
 type Options struct {
 	BaseURL      string
 	APIKey       string
@@ -32,11 +28,11 @@ type Options struct {
 	MaxAttempts  int
 	RetryBackoff time.Duration
 	SpeedUnit    string
-	// HTTPClient is injectable for tests; a tuned client is built when nil.
+	
 	HTTPClient *http.Client
 }
 
-// Client is a OneStepGPS API client with bounded retries.
+
 type Client struct {
 	baseURL      string
 	apiKey       string
@@ -48,7 +44,7 @@ type Client struct {
 	now          func() time.Time
 }
 
-// upstreamError carries the HTTP status so retry policy can inspect it.
+
 type upstreamError struct {
 	StatusCode int
 	Body       string
@@ -65,8 +61,7 @@ func (e *upstreamError) Error() string {
 	return fmt.Sprintf("upstream returned HTTP %d: %s", e.StatusCode, body)
 }
 
-// New builds a Client. It never returns an error: an empty API key is a
-// deployment problem surfaced by config validation, not by the client.
+
 func New(opts Options, log *slog.Logger) *Client {
 	if opts.Timeout <= 0 {
 		opts.Timeout = 12 * time.Second
@@ -101,11 +96,10 @@ func New(opts Options, log *slog.Logger) *Client {
 	}
 }
 
-// Name implements domain.DeviceProvider.
+
 func (c *Client) Name() string { return "onestepgps" }
 
-// FetchDevices retrieves every device with its latest point, retrying
-// transient failures with exponential backoff and full jitter.
+
 func (c *Client) FetchDevices(ctx context.Context) ([]domain.Device, error) {
 	var lastErr error
 
@@ -159,8 +153,7 @@ func (c *Client) fetchOnce(ctx context.Context) ([]domain.Device, error) {
 	start := c.now()
 	resp, err := c.http.Do(req)
 	if err != nil {
-		// Never wrap the raw error text without care: it can contain the full
-		// URL, and the URL contains the API key.
+		
 		return nil, fmt.Errorf("request %s: %w", redactURL(endpoint), redactError(err, c.apiKey))
 	}
 	defer func() {
@@ -207,7 +200,7 @@ func (c *Client) fetchOnce(ctx context.Context) ([]domain.Device, error) {
 	return devices, nil
 }
 
-// endpoint builds the request URL with the credentials attached.
+
 func (c *Client) endpoint() (string, error) {
 	u, err := url.Parse(c.baseURL)
 	if err != nil {
@@ -222,20 +215,19 @@ func (c *Client) endpoint() (string, error) {
 	return u.String(), nil
 }
 
-// backoffFor returns an exponentially increasing delay with full jitter, which
-// prevents a fleet of instances from synchronising their retries.
+
 func (c *Client) backoffFor(attempt int) time.Duration {
 	exponent := math.Pow(2, float64(attempt-1))
 	capped := time.Duration(float64(c.retryBackoff) * exponent)
 	if capped > 10*time.Second {
 		capped = 10 * time.Second
 	}
-	// #nosec G404 -- jitter does not need cryptographic randomness.
-	jitter := 0.5 + rand.Float64()/2 // 50%-100% of the computed delay
+	
+	jitter := 0.5 + rand.Float64()/2 
 	return time.Duration(float64(capped) * jitter)
 }
 
-// isRetryable decides whether another attempt could plausibly succeed.
+
 func isRetryable(err error) bool {
 	if errors.Is(err, domain.ErrUpstreamAuth) {
 		return false
@@ -255,11 +247,11 @@ func isRetryable(err error) bool {
 			return false
 		}
 	}
-	// Transport-level failures (DNS, connection reset, TLS) are worth a retry.
+	
 	return true
 }
 
-// redactURL strips the query string so credentials never reach the logs.
+
 func redactURL(raw string) string {
 	u, err := url.Parse(raw)
 	if err != nil {
@@ -268,8 +260,7 @@ func redactURL(raw string) string {
 	return u.Scheme + "://" + u.Host + u.Path
 }
 
-// redactError removes the API key from an error produced by net/http, which
-// helpfully embeds the whole URL in its messages.
+
 func redactError(err error, apiKey string) error {
 	if err == nil || apiKey == "" {
 		return err
