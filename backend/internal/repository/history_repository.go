@@ -10,22 +10,22 @@ import (
 	"fleetview/internal/domain"
 )
 
-// historyBatchSize bounds how many rows go into a single INSERT.
+
 const historyBatchSize = 100
 
-// HistoryRepository persists device breadcrumbs used to draw trails.
+
 type HistoryRepository struct {
 	db *gorm.DB
 }
 
-// NewHistoryRepository builds the repository.
+
 func NewHistoryRepository(db *gorm.DB) *HistoryRepository {
 	return &HistoryRepository{db: db}
 }
 
 var _ domain.HistoryRepository = (*HistoryRepository)(nil)
 
-// Append stores a batch of breadcrumbs.
+
 func (r *HistoryRepository) Append(ctx context.Context, points []domain.HistoryPoint) error {
 	if len(points) == 0 {
 		return nil
@@ -46,9 +46,7 @@ func (r *HistoryRepository) Append(ctx context.Context, points []domain.HistoryP
 	return nil
 }
 
-// List returns up to limit breadcrumbs for a device since a point in time,
-// oldest first (the order a polyline wants). The newest points are kept when
-// the window contains more than limit rows.
+
 func (r *HistoryRepository) List(ctx context.Context, deviceID string, since time.Time, limit int) ([]domain.HistoryPoint, error) {
 	if limit <= 0 {
 		limit = 500
@@ -70,8 +68,7 @@ func (r *HistoryRepository) List(ctx context.Context, deviceID string, since tim
 	return points, nil
 }
 
-// Prune deletes breadcrumbs older than the cutoff and reports how many rows
-// were removed.
+
 func (r *HistoryRepository) Prune(ctx context.Context, before time.Time) (int64, error) {
 	result := r.db.WithContext(ctx).
 		Where("recorded_at < ?", before.UTC()).
