@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 
-// jsdom ships neither of these, and both are read during store/theme setup.
+
 if (!window.matchMedia) {
   window.matchMedia = vi.fn().mockImplementation((query) => ({
     matches: false,
