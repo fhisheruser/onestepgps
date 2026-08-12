@@ -2,8 +2,6 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Google Maps is never really loaded in jsdom; we only care about *when* the
-// component asks for it.
 const importLibrary = vi.hoisted(() => vi.fn().mockResolvedValue({}))
 vi.mock('@googlemaps/js-api-loader', () => ({
   Loader: class {
@@ -50,7 +48,7 @@ describe('FleetMap key timing', () => {
 
   it('waits for the runtime config instead of latching an error on mount', async () => {
     const preferences = usePreferencesStore()
-    // Mirrors reality: this child mounts before the parent has fetched /config.
+   
     preferences.runtimeConfigLoaded = false
     preferences.runtimeConfig.googleMapsApiKey = ''
 
@@ -70,7 +68,7 @@ describe('FleetMap key timing', () => {
     const wrapper = mount(FleetMap)
     await wrapper.vm.$nextTick()
 
-    // The config request lands.
+ 
     preferences.runtimeConfig.googleMapsApiKey = 'AIza-test-key'
     preferences.runtimeConfigLoaded = true
     await new Promise((resolve) => setTimeout(resolve, 0))
