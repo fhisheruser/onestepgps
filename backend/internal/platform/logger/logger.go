@@ -1,5 +1,4 @@
-// Package logger builds the application's structured logger on top of the
-// standard library's log/slog, so no third-party logging dependency is needed.
+
 package logger
 
 import (
@@ -8,8 +7,6 @@ import (
 	"strings"
 )
 
-// New returns a slog.Logger writing to stdout. Text output is easier to read
-// during development; JSON is what log aggregators want in production.
 func New(level, format string) *slog.Logger {
 	opts := &slog.HandlerOptions{Level: parseLevel(level)}
 
