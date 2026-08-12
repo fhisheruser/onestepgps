@@ -4,15 +4,11 @@ import { useFleetStore } from '@/stores/fleet'
 import { timeAgo } from '@/utils/format'
 import AppIcon from './AppIcon.vue'
 
-/**
- * Tells the user, honestly, how fresh what they are looking at is: which
- * transport is live, when the last successful poll landed, and whether the
- * backend is currently serving cached data because the provider is down.
- */
+
 
 const fleet = useFleetStore()
 
-// A local ticking clock so "12s ago" keeps counting between pushes.
+
 const now = ref(Date.now())
 const timer = window.setInterval(() => {
   now.value = Date.now()
