@@ -11,7 +11,7 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <script>
-      // Applied before first paint so a dark-mode user never sees a white flash.
+    
       (function () {
         try {
           var stored = localStorage.getItem('fleetview.theme')
@@ -20,7 +20,7 @@
             document.documentElement.classList.add('dark')
           }
         } catch (e) {
-          /* private mode: fall back to the light theme */
+         
         }
       })()
     </script>
