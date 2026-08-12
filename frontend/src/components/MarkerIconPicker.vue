@@ -27,8 +27,7 @@ const ICONS = [
   { value: 'pin', label: 'Pin' },
 ]
 
-// A restrained palette: each swatch stays legible against both the light beige
-// map and the dark one, which random user-picked hues do not guarantee.
+
 const SWATCHES = [
   '#B4643C',
   '#9A5231',
