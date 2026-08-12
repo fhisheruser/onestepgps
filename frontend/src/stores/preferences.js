@@ -16,11 +16,7 @@ const DEFAULT_SETTINGS = {
   refreshSeconds: 10,
 }
 
-/**
- * Owns everything the user personalises. Writes are optimistic — the UI
- * updates immediately and rolls back if the server rejects the change — because
- * a rename that lags behind the keystroke feels broken.
- */
+
 export const usePreferencesStore = defineStore('preferences', {
   state: () => ({
     settings: { ...DEFAULT_SETTINGS },
@@ -38,9 +34,7 @@ export const usePreferencesStore = defineStore('preferences', {
     loading: false,
     saving: false,
     loaded: false,
-    // Distinguishes "the Maps key is genuinely absent" from "the config
-    // request has not come back yet". The map needs that difference to avoid
-    // showing a setup error during its own first paint.
+  
     runtimeConfigLoaded: false,
     error: null,
   }),
@@ -56,8 +50,7 @@ export const usePreferencesStore = defineStore('preferences', {
       try {
         this.runtimeConfig = { ...this.runtimeConfig, ...(await fleetApi.runtimeConfig()) }
       } catch (error) {
-        // A missing runtime config is not fatal: the dashboard still works,
-        // just without the map.
+       
         this.error = error.message
       } finally {
         this.runtimeConfigLoaded = true
@@ -81,7 +74,6 @@ export const usePreferencesStore = defineStore('preferences', {
       }
     },
 
-    /** Merge server-owned settings in, keeping the local theme in sync. */
     applySettings(settings) {
       if (!settings) return
       this.settings = { ...DEFAULT_SETTINGS, ...settings }
@@ -121,7 +113,7 @@ export const usePreferencesStore = defineStore('preferences', {
         this.devicePreferences = { ...this.devicePreferences, [deviceId]: saved }
         return saved
       } catch (error) {
-        // Roll back so the UI never shows a value the server rejected.
+       
         const rolledBack = { ...this.devicePreferences }
         if (previous) rolledBack[deviceId] = previous
         else delete rolledBack[deviceId]
