@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { MarkerClusterer } from '@googlemaps/markerclusterer'
 import { useFleetStore } from '@/stores/fleet'
 import { usePreferencesStore } from '@/stores/preferences'
@@ -165,7 +165,24 @@ async function init() {
   syncTrail()
 }
 
-onMounted(init)
+// Initialise when the key arrives, not on mount. This component mounts before
+// its parent has fetched /api/v1/config, so mounting-time init would always
+// see an empty key and latch the "not configured" state for good.
+watch(
+  () => preferences.runtimeConfig.googleMapsApiKey,
+  (key) => {
+    if (key && !ready.value) void init()
+  },
+  { immediate: true },
+)
+
+/** What the overlay should say, given config may still be in flight. */
+const mapState = computed(() => {
+  if (loading.value || !preferences.runtimeConfigLoaded) return 'loading'
+  if (!preferences.runtimeConfig.googleMapsApiKey || error.value === 'missing-api-key') return 'missing-key'
+  if (error.value) return 'load-failed'
+  return 'ready'
+})
 
 onBeforeUnmount(() => {
   markers.forEach((marker) => marker.setMap(null))
@@ -195,7 +212,7 @@ watch(
     <div ref="mapEl" class="h-full w-full" role="application" aria-label="Fleet map" />
 
     <div
-      v-if="loading"
+      v-if="mapState === 'loading'"
       class="absolute inset-0 grid place-items-center bg-sand-100/80 backdrop-blur-sm dark:bg-ink-900/80"
     >
       <div class="flex items-center gap-2 text-sm text-ink-500 dark:text-sand-300">
@@ -204,12 +221,15 @@ watch(
       </div>
     </div>
 
-    <div v-else-if="error" class="absolute inset-0 grid place-items-center bg-sand-100 p-6 dark:bg-ink-900">
+    <div
+      v-else-if="mapState !== 'ready'"
+      class="absolute inset-0 grid place-items-center bg-sand-100 p-6 dark:bg-ink-900"
+    >
       <EmptyState
         vehicle="pin"
-        :title="error === 'missing-api-key' ? 'Map key not configured' : 'The map failed to load'"
+        :title="mapState === 'missing-key' ? 'Map key not configured' : 'The map failed to load'"
         :description="
-          error === 'missing-api-key'
+          mapState === 'missing-key'
             ? 'Set GOOGLE_MAPS_API_KEY on the server and reload. The vehicle list works without it.'
             : 'Google Maps rejected the request. Check the key’s HTTP referrer restrictions and that the Maps JavaScript API is enabled.'
         "
@@ -218,7 +238,7 @@ watch(
       />
     </div>
 
-    <div v-if="ready && !error" class="absolute bottom-4 right-3 flex flex-col gap-1.5">
+    <div v-if="mapState === 'ready'" class="absolute bottom-4 right-3 flex flex-col gap-1.5">
       <button type="button" class="panel btn-ghost h-9 w-9 !px-0 shadow-soft" title="Fit all vehicles" aria-label="Fit all vehicles" @click="fitBounds">
         <AppIcon name="expand" :size="16" />
       </button>

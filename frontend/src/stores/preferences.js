@@ -38,6 +38,10 @@ export const usePreferencesStore = defineStore('preferences', {
     loading: false,
     saving: false,
     loaded: false,
+    // Distinguishes "the Maps key is genuinely absent" from "the config
+    // request has not come back yet". The map needs that difference to avoid
+    // showing a setup error during its own first paint.
+    runtimeConfigLoaded: false,
     error: null,
   }),
 
@@ -55,6 +59,8 @@ export const usePreferencesStore = defineStore('preferences', {
         // A missing runtime config is not fatal: the dashboard still works,
         // just without the map.
         this.error = error.message
+      } finally {
+        this.runtimeConfigLoaded = true
       }
       return this.runtimeConfig
     },
