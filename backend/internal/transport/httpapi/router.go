@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 
 	"fleetview/internal/config"
@@ -50,6 +51,12 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		SecurityHeaders(),
 		CORS(cfg.AllowedOrigins),
 		RequestLogger(log, "/healthz", "/readyz"),
+		// Cloud Run does not compress for us. The JS bundle is ~77 KB raw and
+		// ~24 KB gzipped, and that saving is per visitor. The WebSocket route
+		// is excluded because compressing a hijacked connection breaks the
+		// upgrade.
+		gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedPaths([]string{"/api/v1/ws"})),
+		StaticCacheHeaders(),
 	)
 	if cfg.RateLimit.Enabled {
 		engine.Use(RateLimit(cfg.RateLimit.RPS, cfg.RateLimit.Burst, "/healthz", "/readyz"))
@@ -86,6 +93,25 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 	registerStatic(engine, cfg.StaticDir, log)
 	registerFallback(engine, cfg.StaticDir)
 	return engine
+}
+
+// StaticCacheHeaders makes repeat visits nearly free.
+//
+// Vite fingerprints every file under /assets, so those bytes can never change
+// under the same URL and are safe to cache forever. index.html and the service
+// worker must never be cached, or a deploy would be invisible to anyone with a
+// warm cache.
+func StaticCacheHeaders() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		path := c.Request.URL.Path
+		switch {
+		case strings.HasPrefix(path, "/assets/"):
+			c.Header("Cache-Control", "public, max-age=31536000, immutable")
+		case path == "/" || path == "/index.html" || path == "/sw.js":
+			c.Header("Cache-Control", "no-cache")
+		}
+		c.Next()
+	}
 }
 
 // registerStatic optionally serves a built single-page app from the same

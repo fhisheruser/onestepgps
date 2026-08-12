@@ -493,6 +493,63 @@ func TestCORSAndUnknownRoutes(t *testing.T) {
 	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
 }
 
+// A crowd of readers must never be throttled: reads come from an in-memory
+// snapshot, and rate-limiting them turns a traffic spike into an outage.
+// Writes touch SQLite and stay limited.
+func TestRateLimit_ExemptsReadsAndKeysOnRealClient(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	engine := gin.New()
+	engine.Use(RateLimit(1, 1))
+	engine.GET("/read", func(c *gin.Context) { c.Status(http.StatusOK) })
+	engine.PUT("/write", func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	call := func(method, path, xff string) int {
+		req := httptest.NewRequest(method, path, nil)
+		if xff != "" {
+			req.Header.Set("X-Forwarded-For", xff)
+		}
+		rec := httptest.NewRecorder()
+		engine.ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	// Reads are never limited, however many arrive.
+	for i := 0; i < 50; i++ {
+		require.Equal(t, http.StatusOK, call(http.MethodGet, "/read", ""), "read %d was throttled", i)
+	}
+
+	// Writes from one client exhaust that client's bucket...
+	assert.Equal(t, http.StatusOK, call(http.MethodPut, "/write", "203.0.113.7"))
+	assert.Equal(t, http.StatusTooManyRequests, call(http.MethodPut, "/write", "203.0.113.7"))
+
+	// ...without touching a different client behind the same proxy. This is
+	// the bug that made one bucket serve the whole internet on Cloud Run.
+	assert.Equal(t, http.StatusOK, call(http.MethodPut, "/write", "198.51.100.4"))
+
+	// A proxy chain reports the originating client first.
+	assert.Equal(t, http.StatusOK, call(http.MethodPut, "/write", "198.51.100.9, 10.0.0.1"))
+}
+
+func TestStaticCacheHeaders(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	engine := gin.New()
+	engine.Use(StaticCacheHeaders())
+	engine.GET("/assets/app-abc123.js", func(c *gin.Context) { c.Status(http.StatusOK) })
+	engine.GET("/index.html", func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	rec := httptest.NewRecorder()
+	engine.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/assets/app-abc123.js", nil))
+	assert.Equal(t, "public, max-age=31536000, immutable", rec.Header().Get("Cache-Control"),
+		"fingerprinted assets can never change under the same URL")
+
+	rec = httptest.NewRecorder()
+	engine.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/index.html", nil))
+	assert.Equal(t, "no-cache", rec.Header().Get("Cache-Control"),
+		"a cached index.html would hide every future deploy")
+}
+
 func TestUserIDSanitisation(t *testing.T) {
 	h := newHarness(t)
 

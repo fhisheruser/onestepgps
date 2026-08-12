@@ -180,8 +180,34 @@ type visitor struct {
 	lastSeen time.Time
 }
 
-// RateLimit applies a per-IP token bucket. Idle buckets are evicted so the map
-// cannot grow without bound.
+// clientKey identifies the caller for rate-limiting purposes.
+//
+// Behind Cloud Run (and any L7 proxy) the TCP peer is the load balancer, so
+// c.ClientIP() returns one address for the entire internet and a single token
+// bucket throttles every user at once. The real client is the first entry of
+// X-Forwarded-For. That entry is caller-controlled and therefore spoofable,
+// which is a deliberate trade: a spoofed key degrades to "no rate limit for
+// that attacker", whereas the shared key degrades to "the whole user base is
+// throttled". Only the second failure mode takes the product down, and the
+// platform's own edge is the real DoS boundary.
+func clientKey(c *gin.Context) string {
+	if xff := c.GetHeader("X-Forwarded-For"); xff != "" {
+		if first, _, found := strings.Cut(xff, ","); found || first != "" {
+			if ip := strings.TrimSpace(first); ip != "" {
+				return ip
+			}
+		}
+	}
+	return c.ClientIP()
+}
+
+// RateLimit applies a per-client token bucket to state-changing requests.
+// Idle buckets are evicted so the map cannot grow without bound.
+//
+// Safe, cacheable reads are deliberately exempt: they are served from an
+// in-memory snapshot, they are the entire crowd path, and throttling them
+// turns a traffic spike into an outage. Writes touch SQLite and are where
+// abuse actually costs something.
 func RateLimit(rps float64, burst int, skipPaths ...string) gin.HandlerFunc {
 	if rps <= 0 {
 		rps = 40
@@ -217,8 +243,13 @@ func RateLimit(rps float64, burst int, skipPaths ...string) gin.HandlerFunc {
 			c.Next()
 			return
 		}
+		switch c.Request.Method {
+		case http.MethodGet, http.MethodHead, http.MethodOptions:
+			c.Next()
+			return
+		}
 
-		ip := c.ClientIP()
+		ip := clientKey(c)
 		mu.Lock()
 		v, ok := visitors[ip]
 		if !ok {
