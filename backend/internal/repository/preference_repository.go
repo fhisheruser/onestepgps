@@ -11,21 +11,19 @@ import (
 	"fleetview/internal/domain"
 )
 
-// PreferenceRepository is the SQLite-backed domain.PreferenceRepository.
+
 type PreferenceRepository struct {
 	db *gorm.DB
 }
 
-// NewPreferenceRepository builds the repository.
+
 func NewPreferenceRepository(db *gorm.DB) *PreferenceRepository {
 	return &PreferenceRepository{db: db}
 }
 
 var _ domain.PreferenceRepository = (*PreferenceRepository)(nil)
 
-// GetSettings returns a user's settings, falling back to defaults for a user
-// who has never saved anything. Defaults are not written on read: a row only
-// appears once the user actually changes something.
+
 func (r *PreferenceRepository) GetSettings(ctx context.Context, userID string) (domain.UserSettings, error) {
 	var record userSettingsRecord
 	err := r.db.WithContext(ctx).First(&record, "user_id = ?", userID).Error
@@ -42,7 +40,7 @@ func (r *PreferenceRepository) GetSettings(ctx context.Context, userID string) (
 	}
 }
 
-// SaveSettings upserts a user's settings.
+
 func (r *PreferenceRepository) SaveSettings(ctx context.Context, settings domain.UserSettings) error {
 	if settings.UserID == "" {
 		return domain.NewValidationError("userId", "user id is required")
@@ -64,7 +62,7 @@ func (r *PreferenceRepository) SaveSettings(ctx context.Context, settings domain
 	return nil
 }
 
-// ListDevicePreferences returns every stored per-device customisation.
+
 func (r *PreferenceRepository) ListDevicePreferences(ctx context.Context, userID string) ([]domain.DevicePreference, error) {
 	var records []devicePreferenceRecord
 	if err := r.db.WithContext(ctx).
@@ -81,9 +79,7 @@ func (r *PreferenceRepository) ListDevicePreferences(ctx context.Context, userID
 	return prefs, nil
 }
 
-// GetDevicePreference returns the stored preference, or an empty (but
-// identified) preference when the device has never been customised. Callers
-// patch the result and save it back, so "missing" must not be an error.
+
 func (r *PreferenceRepository) GetDevicePreference(ctx context.Context, userID, deviceID string) (domain.DevicePreference, error) {
 	var record devicePreferenceRecord
 	err := r.db.WithContext(ctx).First(&record, "user_id = ? AND device_id = ?", userID, deviceID).Error
@@ -98,9 +94,7 @@ func (r *PreferenceRepository) GetDevicePreference(ctx context.Context, userID, 
 	}
 }
 
-// SaveDevicePreference upserts a customisation. A preference that carries no
-// customisation at all is deleted instead of stored, which keeps the table
-// proportional to what the user actually changed.
+
 func (r *PreferenceRepository) SaveDevicePreference(ctx context.Context, pref domain.DevicePreference) error {
 	if pref.UserID == "" || pref.DeviceID == "" {
 		return domain.NewValidationError("deviceId", "user id and device id are required")
@@ -123,7 +117,7 @@ func (r *PreferenceRepository) SaveDevicePreference(ctx context.Context, pref do
 	return nil
 }
 
-// DeleteDevicePreference removes a single customisation.
+
 func (r *PreferenceRepository) DeleteDevicePreference(ctx context.Context, userID, deviceID string) error {
 	err := r.db.WithContext(ctx).
 		Where("user_id = ? AND device_id = ?", userID, deviceID).
@@ -134,7 +128,7 @@ func (r *PreferenceRepository) DeleteDevicePreference(ctx context.Context, userI
 	return nil
 }
 
-// Reset removes everything belonging to a user, atomically.
+
 func (r *PreferenceRepository) Reset(ctx context.Context, userID string) error {
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("user_id = ?", userID).Delete(&devicePreferenceRecord{}).Error; err != nil {
