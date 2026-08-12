@@ -6,15 +6,6 @@ import (
 	"fleetview/internal/domain"
 )
 
-// The records below are persistence models, deliberately separate from the
-// domain entities. Storage concerns (column sizes, indexes, timestamps) stay
-// here, and the domain stays free of GORM tags.
-
-// Note on the deliberate absence of `default:` tags below: GORM treats a
-// column with a default as "omit the Go zero value on insert so the database
-// can fill it in". For a boolean preference that silently turns `false` into
-// the default `true`. Defaults belong to domain.DefaultUserSettings, which is
-// applied on a read miss, so every column here is always written explicitly.
 type userSettingsRecord struct {
 	UserID             string `gorm:"primaryKey;size:64"`
 	Theme              string `gorm:"size:16;not null"`
