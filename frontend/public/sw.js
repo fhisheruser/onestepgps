@@ -1,11 +1,3 @@
-/*
-  Minimal offline shell.
-
-  Deliberately does NOT cache /api responses: a fleet tracker showing stale
-  positions it has silently resurrected from disk is worse than one that says
-  it is offline. Only the static shell is cached, so a reload works on a flaky
-  connection and the app itself reports its own data freshness.
-*/
 
 const CACHE = 'fleetview-shell-v1'
 const SHELL = ['/', '/index.html', '/favicon.svg', '/manifest.webmanifest']
@@ -30,13 +22,12 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET' || url.origin !== self.location.origin) return
   if (url.pathname.startsWith('/api/')) return
 
-  // Navigations: network first, cached shell as the offline fallback.
+ 
   if (request.mode === 'navigate') {
     event.respondWith(fetch(request).catch(() => caches.match('/index.html')))
     return
   }
 
-  // Hashed build assets: cache first, they never change under the same name.
   event.respondWith(
     caches.match(request).then(
       (hit) =>
