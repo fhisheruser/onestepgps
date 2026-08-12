@@ -18,9 +18,7 @@ import (
 	"fleetview/internal/domain"
 )
 
-// samplePayload mirrors the shape of a real OneStepGPS response, including the
-// awkward parts: a device with no fix, a numeric-string speed, a null
-// device_state and an unknown extra field.
+
 const samplePayload = `{
   "result_list": [
     {
@@ -99,11 +97,11 @@ func TestFetchDevices_ParsesUpstreamPayload(t *testing.T) {
 	devices, err := client.FetchDevices(context.Background())
 	require.NoError(t, err)
 
-	// The credentials and the latest_point flag must be on the wire.
+	
 	assert.Contains(t, gotQuery, "api-key=secret-key")
 	assert.Contains(t, gotQuery, "latest_point=true")
 
-	// The device without an id is dropped rather than poisoning the fleet.
+	
 	require.Len(t, devices, 2)
 
 	truck := devices[0]
@@ -121,7 +119,7 @@ func TestFetchDevices_ParsesUpstreamPayload(t *testing.T) {
 
 	van := devices[1]
 	assert.False(t, van.Active, "active_state=inactive must map to Active=false")
-	// (0,0) is not a real fix, so the accurate point wins.
+
 	assert.InDelta(t, 32.742, van.Position.Lat, 0.00001)
 	assert.Equal(t, domain.DriveStatusOff, van.DriveStatus)
 	assert.InDelta(t, 97650, van.Odometer, 0.01, "a bare numeric odometer must parse")
