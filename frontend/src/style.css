@@ -2,15 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/*
-  Design tokens live as CSS custom properties so the 3D vehicles, the Google
-  Map surface and the Tailwind utilities all read from one palette. Dark mode
-  is a class on <html>, set before first paint by the inline script in
-  index.html, so there is never a flash of the wrong theme.
-*/
+
 @layer base {
   :root {
-    --surface: 250 246 238; /* sand-100 */
+    --surface: 250 246 238; 
     --surface-raised: 253 251 247;
     --surface-sunken: 242 234 220;
     --border-subtle: 231 219 199;
@@ -46,7 +41,7 @@
   body {
     @apply bg-sand-100 text-ink-800 antialiased dark:bg-ink-900 dark:text-sand-100;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'ss01';
-    /* A barely-there paper grain keeps large beige areas from looking flat. */
+  
     background-image: radial-gradient(rgba(120, 109, 96, 0.045) 1px, transparent 1px);
     background-size: 22px 22px;
   }
@@ -59,7 +54,7 @@
     @apply outline-none ring-2 ring-clay-400 ring-offset-2 ring-offset-sand-100 dark:ring-offset-ink-900;
   }
 
-  /* Slim, warm scrollbars that match the surface rather than the OS. */
+
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
@@ -140,10 +135,7 @@
   }
 }
 
-/*
-  Google Maps injects its own DOM; these rules restyle the surfaces we cannot
-  reach through the Maps styling API so info windows match the dashboard.
-*/
+
 .gm-style .gm-style-iw-c {
   border-radius: 1rem !important;
   padding: 0 !important;
