@@ -1,6 +1,4 @@
-// Package httpapi is the HTTP delivery layer: routing, middleware, request
-// binding and response rendering. All business rules live in the service
-// package; handlers here stay thin on purpose.
+
 package httpapi
 
 import (
@@ -17,7 +15,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// Context keys and headers used across the middleware chain.
+
 const (
 	ctxKeyRequestID = "request_id"
 	ctxKeyUserID    = "user_id"
@@ -25,16 +23,13 @@ const (
 	headerRequestID = "X-Request-Id"
 	headerUserID    = "X-User-Id"
 
-	// DefaultUserID owns the preferences of anyone who does not identify
-	// themselves. Multi-user support is therefore opt-in, not bolted on.
+
 	DefaultUserID = "default"
 )
 
-// userIDPattern keeps identifiers safe for logs, SQL parameters and metrics.
+
 var userIDPattern = regexp.MustCompile(`^[A-Za-z0-9._-]{1,64}$`)
 
-// RequestID assigns every request a correlation id, honouring one supplied by
-// an upstream proxy so traces survive across services.
 func RequestID() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := strings.TrimSpace(c.GetHeader(headerRequestID))
@@ -47,9 +42,7 @@ func RequestID() gin.HandlerFunc {
 	}
 }
 
-// UserContext resolves the caller's preference scope. The browser generates a
-// stable id and sends it as a header; anything unparseable falls back to the
-// shared default rather than failing the request.
+
 func UserContext() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		candidate := strings.TrimSpace(c.GetHeader(headerUserID))
@@ -64,7 +57,7 @@ func UserContext() gin.HandlerFunc {
 	}
 }
 
-// RequestLogger emits one structured line per request.
+
 func RequestLogger(log *slog.Logger, skipPaths ...string) gin.HandlerFunc {
 	skip := make(map[string]bool, len(skipPaths))
 	for _, p := range skipPaths {
@@ -106,7 +99,7 @@ func RequestLogger(log *slog.Logger, skipPaths ...string) gin.HandlerFunc {
 	}
 }
 
-// Recovery converts a panic into a 500 without taking the process down.
+
 func Recovery(log *slog.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
@@ -124,9 +117,7 @@ func Recovery(log *slog.Logger) gin.HandlerFunc {
 	}
 }
 
-// CORS answers preflights and echoes only origins we trust. A literal "*" in
-// the configuration allows any origin, which is convenient for local demos and
-// should not be used in production.
+
 func CORS(allowedOrigins []string) gin.HandlerFunc {
 	allowed := make(map[string]bool, len(allowedOrigins))
 	wildcard := false
@@ -163,23 +154,7 @@ func CORS(allowedOrigins []string) gin.HandlerFunc {
 	}
 }
 
-// SecurityHeaders applies conservative defaults for an API surface.
-// appCSP is the Content-Security-Policy for the dashboard itself.
-//
-// Honesty about its strength: 'unsafe-inline' is unavoidable here. The theme
-// script in index.html must run before first paint to prevent a white flash,
-// and the 3D vehicles are drawn with bound inline styles. That weakens CSP's
-// anti-XSS value — but the surviving directives still block the things that
-// turn an injection into a breach: no attacker-hosted scripts (script-src is
-// an allow-list), no plugins (object-src), no <base> hijack, no framing, and
-// no form posts to another origin.
-//
-// 'unsafe-eval' is deliberately NOT granted. Google Maps runs without it in
-// the paths this app uses, and it was verified against the live map.
-//
-// Uploaded icons are exempt: their handler sets a far stricter policy of its
-// own (default-src 'none'; sandbox), and because handlers run after this
-// middleware, that stricter value wins.
+
 const appCSP = "default-src 'self'; " +
 	"base-uri 'self'; " +
 	"object-src 'none'; " +
@@ -199,31 +174,21 @@ func SecurityHeaders() gin.HandlerFunc {
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("Referrer-Policy", "no-referrer")
 		h.Set("Content-Security-Policy", appCSP)
-		// Browsers ignore HSTS over plain HTTP, so it is safe to always send.
+		
 		h.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-		// The app asks for none of these; deny them so a compromise cannot.
+	
 		h.Set("Permissions-Policy", "geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()")
 		h.Set("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
 		c.Next()
 	}
 }
 
-// visitor is one rate-limited client.
 type visitor struct {
 	limiter  *rate.Limiter
 	lastSeen time.Time
 }
 
-// clientKey identifies the caller for rate-limiting purposes.
-//
-// Behind Cloud Run (and any L7 proxy) the TCP peer is the load balancer, so
-// c.ClientIP() returns one address for the entire internet and a single token
-// bucket throttles every user at once. The real client is the first entry of
-// X-Forwarded-For. That entry is caller-controlled and therefore spoofable,
-// which is a deliberate trade: a spoofed key degrades to "no rate limit for
-// that attacker", whereas the shared key degrades to "the whole user base is
-// throttled". Only the second failure mode takes the product down, and the
-// platform's own edge is the real DoS boundary.
+
 func clientKey(c *gin.Context) string {
 	if xff := c.GetHeader("X-Forwarded-For"); xff != "" {
 		if first, _, found := strings.Cut(xff, ","); found || first != "" {
@@ -235,13 +200,6 @@ func clientKey(c *gin.Context) string {
 	return c.ClientIP()
 }
 
-// RateLimit applies a per-client token bucket to state-changing requests.
-// Idle buckets are evicted so the map cannot grow without bound.
-//
-// Safe, cacheable reads are deliberately exempt: they are served from an
-// in-memory snapshot, they are the entire crowd path, and throttling them
-// turns a traffic spike into an outage. Writes touch SQLite and are where
-// abuse actually costs something.
 func RateLimit(rps float64, burst int, skipPaths ...string) gin.HandlerFunc {
 	if rps <= 0 {
 		rps = 40
@@ -305,7 +263,7 @@ func RateLimit(rps float64, burst int, skipPaths ...string) gin.HandlerFunc {
 	}
 }
 
-// RequestIDOf returns the correlation id of the current request.
+
 func RequestIDOf(c *gin.Context) string {
 	if v, ok := c.Get(ctxKeyRequestID); ok {
 		if id, ok := v.(string); ok {
@@ -315,7 +273,7 @@ func RequestIDOf(c *gin.Context) string {
 	return ""
 }
 
-// UserIDOf returns the preference scope of the current request.
+
 func UserIDOf(c *gin.Context) string {
 	if v, ok := c.Get(ctxKeyUserID); ok {
 		if id, ok := v.(string); ok && id != "" {
