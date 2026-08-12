@@ -18,14 +18,7 @@ const EMPTY_SUMMARY = {
   stale: false,
 }
 
-/**
- * The live fleet: devices already merged with this user's preferences by the
- * backend, plus the KPIs and freshness metadata that come with them.
- *
- * Device mutations are orchestrated here rather than in components: each one
- * patches the local device immediately (so the UI responds to the click), asks
- * the preferences store to persist it, and lets the next feed confirm.
- */
+
 export const useFleetStore = defineStore('fleet', {
   state: () => ({
     devices: [],
@@ -60,10 +53,10 @@ export const useFleetStore = defineStore('fleet', {
 
     hasDevices: (state) => state.devices.length > 0,
 
-    /** True when the fleet itself is empty, as opposed to filtered to nothing. */
+   
     isFleetEmpty: (state) => state.initialised && state.summary.total === 0,
 
-    /** True when filters excluded everything the user has. */
+   
     isFilteredEmpty: (state) => state.initialised && state.summary.total > 0 && state.devices.length === 0,
 
     isFiltering: (state) =>
@@ -82,7 +75,7 @@ export const useFleetStore = defineStore('fleet', {
       pinned: state.filters.onlyPinned,
     }),
 
-    /** The filter shape the WebSocket understands. */
+   
     realtimeQuery: (state) => ({
       search: state.filters.search,
       status: state.filters.status,
@@ -94,10 +87,7 @@ export const useFleetStore = defineStore('fleet', {
   },
 
   actions: {
-    /**
-     * Fetch the merged feed. `silent` keeps the skeletons away during the 10s
-     * background refresh — only the very first load should look like loading.
-     */
+    
     async fetchFeed({ silent = false } = {}) {
       if (!silent) this.loading = true
       try {
@@ -105,8 +95,7 @@ export const useFleetStore = defineStore('fleet', {
         this.error = null
       } catch (error) {
         this.error = error.message
-        // A background refresh failing is a banner, not a blank screen: the
-        // previously fetched devices stay on the map.
+       
         if (!silent) useUiStore().notify(error.message, { type: 'error' })
       } finally {
         this.loading = false
@@ -114,7 +103,7 @@ export const useFleetStore = defineStore('fleet', {
       }
     },
 
-    /** Apply a feed from either transport (REST response or WebSocket push). */
+   
     applyFeed(feed) {
       if (!feed) return
       this.devices = feed.devices || []
@@ -162,7 +151,7 @@ export const useFleetStore = defineStore('fleet', {
         this.history = { ...this.history, [deviceId]: data.points || [] }
         return this.history[deviceId]
       } catch {
-        // Trails are a nice-to-have; a failure must not interrupt tracking.
+       
         this.history = { ...this.history, [deviceId]: [] }
         return []
       } finally {
@@ -170,7 +159,7 @@ export const useFleetStore = defineStore('fleet', {
       }
     },
 
-    /** Locally patch one device so the UI reacts before the server confirms. */
+   
     patchDevice(deviceId, patch) {
       this.devices = this.devices.map((device) =>
         device.id === deviceId
@@ -179,7 +168,6 @@ export const useFleetStore = defineStore('fleet', {
       )
     },
 
-    // ---- Device-level personalisation -----------------------------------
 
     async renameDevice(deviceId, displayName) {
       const trimmed = String(displayName || '').trim()
@@ -245,7 +233,7 @@ export const useFleetStore = defineStore('fleet', {
       useUiStore().notify('Vehicle reset to defaults', { type: 'success', timeout: 2500 })
     },
 
-    /** Persist a drag-and-drop order and switch the fleet to custom sorting. */
+   
     async reorderDevices(deviceIds) {
       await usePreferencesStore().reorder(deviceIds)
       this.setFilters({ sortKey: 'custom', sortDirection: 'asc' })
