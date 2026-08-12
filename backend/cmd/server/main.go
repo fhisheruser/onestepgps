@@ -1,9 +1,4 @@
-// Command server is the FleetView backend: it polls the GPS provider in the
-// background, merges the cached fleet with per-user preferences and serves the
-// result over REST and WebSocket.
-//
-// Composition happens here and nowhere else — every other package receives its
-// dependencies through interfaces, which is what keeps them unit-testable.
+
 package main
 
 import (
@@ -31,7 +26,7 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		// The logger may not exist yet, so fail loudly on stderr too.
+		
 		fmt.Fprintf(os.Stderr, "fatal: %v\n", err)
 		os.Exit(1)
 	}
@@ -59,7 +54,7 @@ func run() error {
 
 	clock := domain.SystemClock{}
 
-	// ---- Infrastructure -----------------------------------------------
+	
 	db, err := repository.Open(repository.Options{
 		Path:        cfg.Database.Path,
 		AutoMigrate: cfg.Database.AutoMigrate,
@@ -93,7 +88,7 @@ func run() error {
 		}, log)
 	}
 
-	// ---- Application ----------------------------------------------------
+
 	cache := service.NewSnapshotCache()
 
 	deviceService := service.NewDeviceService(service.DeviceServiceDeps{
@@ -137,7 +132,7 @@ func run() error {
 		HistoryPrune:       cfg.History.PruneInterval,
 	})
 
-	// ---- Delivery --------------------------------------------------------
+	
 	router := httpapi.NewRouter(httpapi.RouterDeps{
 		Handlers: httpapi.NewHandlers(httpapi.HandlerDeps{
 			Devices:     deviceService,
@@ -155,15 +150,13 @@ func run() error {
 	server := &http.Server{
 		Addr:    cfg.HTTPAddr,
 		Handler: router,
-		// WriteTimeout is deliberately absent: it would cut off long-lived
-		// WebSocket connections. Per-write deadlines are set in the hub, and
-		// ReadHeaderTimeout still protects against slowloris.
+		
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		IdleTimeout:       120 * time.Second,
 	}
 
-	// ---- Lifecycle -------------------------------------------------------
+	
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -207,8 +200,7 @@ func run() error {
 	return nil
 }
 
-// waitFor blocks until the WaitGroup drains or the timeout elapses, so a stuck
-// background task cannot hang the process forever.
+
 func waitFor(wg *sync.WaitGroup, timeout time.Duration, log *slog.Logger) {
 	done := make(chan struct{})
 	go func() {
