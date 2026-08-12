@@ -79,8 +79,7 @@ describe('misc formatters', () => {
   })
 
   it('formats odometers and hides empty ones', () => {
-    // Grouping follows the viewer's locale (en-IN groups as 1,23,457), so
-    // assert against the same locale rather than hard-coding en-US.
+
     expect(formatOdometer(123456.7, 'km')).toBe(`${(123457).toLocaleString()} km`)
     expect(formatOdometer(0, 'km')).toBe('—')
   })
