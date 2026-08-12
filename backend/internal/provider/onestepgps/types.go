@@ -10,13 +10,7 @@ import (
 	"fleetview/internal/domain"
 )
 
-// The OneStepGPS payload is only partially specified in the public docs (the
-// reference is behind a login), and different device generations populate
-// different subsets of it. Every field below therefore uses a lenient
-// unmarshaller: a single malformed value degrades that value, never the whole
-// fleet fetch. Unknown fields are ignored by encoding/json for free.
 
-// deviceListResponse is the envelope of GET /v3/api/public/device.
 type deviceListResponse struct {
 	ResultList []apiDevice `json:"result_list"`
 }
@@ -56,7 +50,7 @@ type apiDeviceState struct {
 	SoftwareOdometer     apiMeasure `json:"software_odometer"`
 }
 
-// toDomain converts the wire representation into the domain entity.
+
 func (d apiDevice) toDomain(speedUnit string, now time.Time) domain.Device {
 	device := domain.Device{
 		ID:        strings.TrimSpace(d.DeviceID),
@@ -101,16 +95,14 @@ func (d apiDevice) toDomain(speedUnit string, now time.Time) domain.Device {
 		device.OdometerUnit = odo.Unit
 	}
 
-	// Some trackers report a positive speed while the state machine still says
-	// "off"; trust movement over the label so the UI is not self-contradictory.
+	
 	if device.DriveStatus == domain.DriveStatusUnknown && device.Position.Speed > 1 {
 		device.DriveStatus = domain.DriveStatusDriving
 	}
 	return device
 }
 
-// bestPoint prefers the latest point but falls back to the latest *accurate*
-// point when the newest fix has no usable coordinates.
+
 func (d apiDevice) bestPoint() *apiDevicePoint {
 	latest := d.LatestDevicePoint
 	if latest != nil && latest.hasFix() {
@@ -142,8 +134,7 @@ func (p *apiDevicePoint) hasFix() bool {
 	return domain.Position{Lat: float64(p.Lat), Lng: float64(p.Lng)}.Valid()
 }
 
-// timestamp prefers the tracker clock, falls back to the server clock, and
-// finally to "now" so a device never appears to be from 1 AD.
+
 func (p *apiDevicePoint) timestamp(now time.Time) time.Time {
 	if !p.DtTracker.IsZero() {
 		return p.DtTracker.Time
@@ -173,12 +164,7 @@ func normaliseHeading(angle float64) float64 {
 	return angle
 }
 
-// ---------------------------------------------------------------------------
-// Lenient scalar types
-// ---------------------------------------------------------------------------
 
-// flexTime accepts RFC3339 (with or without fractional seconds) and a couple
-// of looser layouts seen in the wild; anything else decodes to the zero time.
 type flexTime struct{ time.Time }
 
 var timeLayouts = []string{
@@ -200,14 +186,14 @@ func (t *flexTime) UnmarshalJSON(b []byte) error {
 			return nil
 		}
 	}
-	// Unix seconds fallback.
+
 	if secs, err := strconv.ParseInt(s, 10, 64); err == nil && secs > 0 {
 		t.Time = time.Unix(secs, 0).UTC()
 	}
 	return nil
 }
 
-// flexFloat accepts a JSON number or a numeric string.
+
 type flexFloat float64
 
 func (f *flexFloat) UnmarshalJSON(b []byte) error {
@@ -221,7 +207,7 @@ func (f *flexFloat) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// flexBool accepts true/false, "true"/"false", and 1/0.
+
 type flexBool bool
 
 func (b *flexBool) UnmarshalJSON(data []byte) error {
@@ -230,14 +216,14 @@ func (b *flexBool) UnmarshalJSON(data []byte) error {
 	case "true", "1", "yes", "online":
 		*b = true
 	case "", "null":
-		// leave zero value
+		
 	default:
 		*b = false
 	}
 	return nil
 }
 
-// flexString accepts a string or renders any other scalar as its raw JSON.
+
 type flexString string
 
 func (s *flexString) UnmarshalJSON(data []byte) error {
@@ -259,7 +245,7 @@ func (s *flexString) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// apiMeasure accepts either {"value": 12, "unit": "km"} or a bare number.
+
 type apiMeasure struct {
 	Value float64
 	Unit  string
@@ -287,7 +273,7 @@ func (m *apiMeasure) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// apiGroups accepts a list of strings or a list of {"name": ...} objects.
+
 type apiGroups []string
 
 func (g *apiGroups) UnmarshalJSON(data []byte) error {
@@ -321,9 +307,7 @@ func (g *apiGroups) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// parseISODuration understands the ISO-8601 durations OneStepGPS returns for
-// drive_status_duration (e.g. "PT4H33M12S", "P1DT2H"), and also accepts Go
-// duration strings and bare seconds. Unparseable input yields 0.
+
 func parseISODuration(raw string) time.Duration {
 	s := strings.TrimSpace(raw)
 	if s == "" {
@@ -369,8 +353,7 @@ func parseISODuration(raw string) time.Duration {
 		'Y': 365 * 24 * time.Hour,
 		'W': 7 * 24 * time.Hour,
 		'D': 24 * time.Hour,
-		// Calendar months are approximated; the value is only ever displayed as
-		// "how long has this vehicle been idle", never used for arithmetic.
+		
 		'M': 30 * 24 * time.Hour,
 	})
 	accumulate(timePart, map[byte]time.Duration{
