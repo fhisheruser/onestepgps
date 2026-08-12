@@ -1,25 +1,9 @@
 import axios from 'axios'
 
-/**
- * The single HTTP entry point to the backend.
- *
- * Note what is *not* here: the OneStepGPS API key. The browser never sees it —
- * it is held server-side and the backend returns already-merged data. The only
- * key the client handles is the Google Maps browser key, which the backend
- * serves from /config at runtime (restrict it by HTTP referrer in Cloud
- * Console; that is what makes a public browser key safe).
- */
-
 export const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
 const USER_ID_STORAGE_KEY = 'fleetview.userId'
 
-/**
- * Preferences are scoped to a stable per-browser identity. This is not
- * authentication — it is a namespace, so two people sharing a deployment do
- * not overwrite each other's renames. The id shape matches the pattern the
- * backend validates against.
- */
 export function resolveUserId() {
   try {
     const existing = window.localStorage.getItem(USER_ID_STORAGE_KEY)
@@ -33,7 +17,7 @@ export function resolveUserId() {
     window.localStorage.setItem(USER_ID_STORAGE_KEY, generated)
     return generated
   } catch {
-    // Private browsing with storage disabled: fall back to the shared scope.
+   
     return 'default'
   }
 }
@@ -49,7 +33,6 @@ http.interceptors.request.use((config) => {
   return config
 })
 
-/** A single, predictable error shape for every caller. */
 export class ApiError extends Error {
   constructor({ message, code = 'unknown', field = '', status = 0, retryable = false }) {
     super(message)
@@ -111,7 +94,7 @@ http.interceptors.response.use(
   (error) => Promise.reject(normaliseError(error)),
 )
 
-/** Drop empty values so the query string stays readable and cache-friendly. */
+
 function cleanParams(params = {}) {
   return Object.fromEntries(
     Object.entries(params).filter(([, value]) => value !== '' && value !== null && value !== undefined && value !== false),
@@ -188,11 +171,7 @@ export const fleetApi = {
     return data
   },
 
-  /**
-   * CSV export is a plain download rather than an XHR so the browser handles
-   * the file dialog. The user id travels as a query parameter because a
-   * navigation cannot carry a custom header.
-   */
+ 
   exportCsvUrl(params = {}) {
     const query = new URLSearchParams({ ...cleanParams(params), userId: resolveUserId() })
     return `${API_BASE}/export/devices.csv?${query.toString()}`
