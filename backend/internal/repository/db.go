@@ -1,5 +1,4 @@
-// Package repository implements the domain persistence ports on top of GORM
-// and SQLite. The rest of the application never sees a *gorm.DB.
+
 package repository
 
 import (
@@ -15,7 +14,7 @@ import (
 	gormlogger "gorm.io/gorm/logger"
 )
 
-// Options configures the database connection.
+
 type Options struct {
 	Path        string
 	AutoMigrate bool
@@ -23,11 +22,7 @@ type Options struct {
 	Logger      *slog.Logger
 }
 
-// Open connects to SQLite, applies the pragmas a concurrent web service needs
-// and (optionally) runs migrations.
-//
-// The driver is glebarez/sqlite, a pure-Go port: no CGO, which means a static
-// binary, a scratch-based Docker image and no C toolchain on any dev machine.
+
 func Open(opts Options) (*gorm.DB, error) {
 	if opts.Path == "" {
 		return nil, fmt.Errorf("database path must not be empty")
@@ -56,8 +51,7 @@ func Open(opts Options) (*gorm.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("access sql db: %w", err)
 	}
-	// SQLite serialises writes; a small pool with a single writer avoids
-	// "database is locked" without throttling reads meaningfully at this scale.
+	
 	sqlDB.SetMaxOpenConns(4)
 	sqlDB.SetMaxIdleConns(4)
 	sqlDB.SetConnMaxLifetime(time.Hour)
@@ -73,9 +67,7 @@ func Open(opts Options) (*gorm.DB, error) {
 	return db, nil
 }
 
-// dsn builds the connection string, enabling WAL (concurrent readers during a
-// write), a busy timeout (retry instead of failing instantly on lock
-// contention) and foreign key enforcement, which SQLite disables by default.
+
 func dsn(path string) string {
 	pragmas := url.Values{}
 	pragmas.Add("_pragma", "journal_mode(WAL)")
@@ -85,7 +77,7 @@ func dsn(path string) string {
 	return "file:" + path + "?" + pragmas.Encode()
 }
 
-// Migrate creates or updates every table the application owns.
+
 func Migrate(db *gorm.DB) error {
 	if err := db.AutoMigrate(
 		&userSettingsRecord{},
@@ -98,7 +90,6 @@ func Migrate(db *gorm.DB) error {
 	return nil
 }
 
-// Close releases the underlying connection pool.
 func Close(db *gorm.DB) error {
 	if db == nil {
 		return nil
