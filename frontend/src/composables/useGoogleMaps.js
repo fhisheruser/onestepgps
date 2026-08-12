@@ -1,14 +1,6 @@
 import { ref, shallowRef } from 'vue'
 import { Loader } from '@googlemaps/js-api-loader'
 
-/**
- * Loads the Google Maps JavaScript API exactly once per page.
- *
- * The key is fetched from the backend at runtime (GET /api/v1/config) instead
- * of being baked into the bundle, so the same built image can be promoted
- * between environments. A Maps browser key is public by nature — restrict it
- * by HTTP referrer in Cloud Console; that, not secrecy, is what protects it.
- */
 
 let loaderPromise = null
 let loadedLibraries = null
@@ -31,7 +23,7 @@ export async function loadGoogleMaps(apiKey, { libraries = ['marker'] } = {}) {
   try {
     return await loaderPromise
   } catch (error) {
-    // Allow a later retry (e.g. after the user fixes their key/referrer).
+   
     loaderPromise = null
     throw error
   }
@@ -67,10 +59,7 @@ export function useGoogleMaps() {
   return { libraries, ready, loading, error, load }
 }
 
-/**
- * A warm, low-contrast map style that matches the beige UI and, crucially,
- * keeps vehicle markers as the highest-contrast thing on screen.
- */
+
 export const MAP_STYLE_LIGHT = [
   { elementType: 'geometry', stylers: [{ color: '#f7f2e8' }] },
   { elementType: 'labels.text.fill', stylers: [{ color: '#7a6f60' }] },
