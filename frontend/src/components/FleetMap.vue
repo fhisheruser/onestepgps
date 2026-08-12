@@ -22,10 +22,7 @@ const hasFitted = ref(false)
 
 const settings = computed(() => preferences.settings)
 
-// ponytail: classic google.maps.Marker, not AdvancedMarkerElement. Advanced
-// markers require a cloud-configured Map ID, which would also disable the
-// `styles` array this beige theme depends on. Swap both together if the
-// deprecation ever turns into a removal.
+
 function markerIcon(device) {
   const prefs = device.preferences || {}
   const google = window.google
@@ -43,7 +40,7 @@ function markerIcon(device) {
   const heading = Number.isFinite(device.position?.heading) ? device.position.heading : 0
   const stroke = device.online ? '#FDFBF7' : '#C4BCB0'
 
-  // A teardrop when moving (points along the heading), a disc when parked.
+ 
   const glyph = moving
     ? `<path d="M20 4 L30 30 L20 25 L10 30 Z" fill="${color}" stroke="${stroke}" stroke-width="2.5" stroke-linejoin="round" transform="rotate(${heading} 20 20)"/>`
     : `<circle cx="20" cy="20" r="9" fill="${color}" stroke="${stroke}" stroke-width="3"/>`
@@ -75,8 +72,7 @@ function syncMarkers() {
       clusterer?.addMarker(marker)
       if (!clusterer) marker.setMap(map)
     } else {
-      // Moving an existing marker (rather than recreating it) is what makes
-      // the Maps API animate the vehicle instead of teleporting it.
+  
       marker.setPosition(position)
       marker.setTitle(device.name)
     }
@@ -165,9 +161,7 @@ async function init() {
   syncTrail()
 }
 
-// Initialise when the key arrives, not on mount. This component mounts before
-// its parent has fetched /api/v1/config, so mounting-time init would always
-// see an empty key and latch the "not configured" state for good.
+
 watch(
   () => preferences.runtimeConfig.googleMapsApiKey,
   (key) => {
@@ -176,7 +170,7 @@ watch(
   { immediate: true },
 )
 
-/** What the overlay should say, given config may still be in flight. */
+
 const mapState = computed(() => {
   if (loading.value || !preferences.runtimeConfigLoaded) return 'loading'
   if (!preferences.runtimeConfig.googleMapsApiKey || error.value === 'missing-api-key') return 'missing-key'
@@ -197,7 +191,7 @@ watch(() => [fleet.selectedHistory, settings.value.showTrails], syncTrail, { dee
 watch(() => settings.value.mapType, (type) => map?.setMapTypeId(type || 'roadmap'))
 watch(() => ui.isDark, (dark) => map?.setOptions({ styles: dark ? MAP_STYLE_DARK : MAP_STYLE_LIGHT }))
 
-// Centre on the vehicle the user just picked, without changing their zoom.
+
 watch(
   () => fleet.selectedDeviceId,
   (id) => {
