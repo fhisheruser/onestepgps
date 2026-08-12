@@ -1,7 +1,4 @@
-// Package dto defines the JSON contract of the API and maps domain types onto
-// it. Keeping the wire format in its own package means a rename inside the
-// domain can never silently break the frontend, and both the REST handlers and
-// the WebSocket hub serialise devices exactly the same way.
+
 package dto
 
 import (
@@ -11,7 +8,7 @@ import (
 	"fleetview/internal/service"
 )
 
-// Position is a GPS fix as rendered to the client.
+
 type Position struct {
 	Lat        float64    `json:"lat"`
 	Lng        float64    `json:"lng"`
@@ -23,7 +20,7 @@ type Position struct {
 	Valid      bool       `json:"valid"`
 }
 
-// DevicePrefs is the personalisation applied to a device in a feed response.
+
 type DevicePrefs struct {
 	Hidden        bool   `json:"hidden"`
 	Pinned        bool   `json:"pinned"`
@@ -34,7 +31,7 @@ type DevicePrefs struct {
 	SortIndex     int    `json:"sortIndex"`
 }
 
-// Device is a live device merged with the caller's preferences.
+
 type Device struct {
 	ID           string `json:"id"`
 	Name         string `json:"name"`
@@ -60,7 +57,7 @@ type Device struct {
 	Preferences DevicePrefs `json:"preferences"`
 }
 
-// Summary holds the fleet KPIs.
+
 type Summary struct {
 	Total       int        `json:"total"`
 	Visible     int        `json:"visible"`
@@ -76,7 +73,7 @@ type Summary struct {
 	Stale       bool       `json:"stale"`
 }
 
-// Settings is the fleet-wide personalisation document.
+
 type Settings struct {
 	Theme              string `json:"theme"`
 	SortKey            string `json:"sortKey"`
@@ -91,7 +88,7 @@ type Settings struct {
 	RefreshSeconds     int    `json:"refreshSeconds"`
 }
 
-// DevicePreference is a stored per-device customisation.
+
 type DevicePreference struct {
 	DeviceID      string     `json:"deviceId"`
 	Hidden        bool       `json:"hidden"`
@@ -105,13 +102,13 @@ type DevicePreference struct {
 	UpdatedAt     *time.Time `json:"updatedAt,omitempty"`
 }
 
-// Preferences is the full preference document for one user.
+
 type Preferences struct {
 	Settings Settings           `json:"settings"`
 	Devices  []DevicePreference `json:"devices"`
 }
 
-// Meta describes the freshness of the data in a feed response.
+
 type Meta struct {
 	FetchedAt  *time.Time `json:"fetchedAt"`
 	AgeSeconds float64    `json:"ageSeconds"`
@@ -121,7 +118,7 @@ type Meta struct {
 	ServerTime time.Time  `json:"serverTime"`
 }
 
-// Feed is the payload of GET /devices and of every realtime push.
+
 type Feed struct {
 	Devices  []Device `json:"devices"`
 	Summary  Summary  `json:"summary"`
@@ -129,7 +126,7 @@ type Feed struct {
 	Meta     Meta     `json:"meta"`
 }
 
-// HistoryPoint is one breadcrumb of a device trail.
+
 type HistoryPoint struct {
 	Lat         float64   `json:"lat"`
 	Lng         float64   `json:"lng"`
@@ -139,9 +136,7 @@ type HistoryPoint struct {
 	RecordedAt  time.Time `json:"recordedAt"`
 }
 
-// RuntimeConfig is the small, deliberately public bundle the browser needs to
-// boot. The OneStepGPS key is never part of it; the Google Maps browser key is
-// public by design and must be restricted by HTTP referrer in Cloud Console.
+
 type RuntimeConfig struct {
 	GoogleMapsAPIKey string `json:"googleMapsApiKey"`
 	GoogleMapsMapID  string `json:"googleMapsMapId"`
@@ -153,23 +148,19 @@ type RuntimeConfig struct {
 	MaxIconBytes     int64  `json:"maxIconBytes"`
 }
 
-// Envelope wraps errors so the frontend has one shape to handle.
+
 type Envelope struct {
 	Error *APIError `json:"error,omitempty"`
 }
 
-// APIError is a machine-readable failure.
+
 type APIError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
 	Field   string `json:"field,omitempty"`
 }
 
-// ---------------------------------------------------------------------------
-// Mappers
-// ---------------------------------------------------------------------------
 
-// FromDeviceView maps a merged domain device onto its wire representation.
 func FromDeviceView(v domain.DeviceView) Device {
 	groups := v.Groups
 	if groups == nil {
@@ -213,7 +204,7 @@ func FromDeviceView(v domain.DeviceView) Device {
 	}
 }
 
-// FromFeed maps the service-level feed onto the API response.
+
 func FromFeed(feed service.Feed, now time.Time) Feed {
 	devices := make([]Device, 0, len(feed.Devices))
 	for _, v := range feed.Devices {
@@ -235,7 +226,7 @@ func FromFeed(feed service.Feed, now time.Time) Feed {
 	}
 }
 
-// FromSummary maps fleet KPIs.
+
 func FromSummary(s domain.FleetSummary) Summary {
 	return Summary{
 		Total:       s.Total,
@@ -253,7 +244,7 @@ func FromSummary(s domain.FleetSummary) Summary {
 	}
 }
 
-// FromSettings maps user settings.
+
 func FromSettings(s domain.UserSettings) Settings {
 	return Settings{
 		Theme:              string(s.Theme),
@@ -270,7 +261,7 @@ func FromSettings(s domain.UserSettings) Settings {
 	}
 }
 
-// FromDevicePreference maps a stored customisation.
+
 func FromDevicePreference(p domain.DevicePreference) DevicePreference {
 	return DevicePreference{
 		DeviceID:      p.DeviceID,
@@ -286,7 +277,7 @@ func FromDevicePreference(p domain.DevicePreference) DevicePreference {
 	}
 }
 
-// FromPreferences maps the full preference document.
+
 func FromPreferences(p service.Preferences) Preferences {
 	devices := make([]DevicePreference, 0, len(p.Devices))
 	for _, d := range p.Devices {
@@ -295,7 +286,7 @@ func FromPreferences(p service.Preferences) Preferences {
 	return Preferences{Settings: FromSettings(p.Settings), Devices: devices}
 }
 
-// FromHistory maps a breadcrumb trail.
+
 func FromHistory(points []domain.HistoryPoint) []HistoryPoint {
 	out := make([]HistoryPoint, 0, len(points))
 	for _, p := range points {
@@ -311,7 +302,6 @@ func FromHistory(points []domain.HistoryPoint) []HistoryPoint {
 	return out
 }
 
-// timePtr renders the zero time as JSON null instead of year 1.
 func timePtr(t time.Time) *time.Time {
 	if t.IsZero() {
 		return nil
