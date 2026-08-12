@@ -11,10 +11,7 @@ import (
 	"fleetview/internal/domain"
 )
 
-// Feed is everything the dashboard needs for one render: the merged devices,
-// the fleet KPIs, the user's settings and the freshness of the underlying
-// snapshot. Serving it as one document keeps the UI free of request waterfalls
-// and guarantees the list and the map always agree.
+
 type Feed struct {
 	Devices  []domain.DeviceView
 	Summary  domain.FleetSummary
@@ -24,7 +21,7 @@ type Feed struct {
 	Age      time.Duration
 }
 
-// DeviceServiceDeps are the collaborators of DeviceService.
+
 type DeviceServiceDeps struct {
 	Cache            domain.SnapshotStore
 	Preferences      domain.PreferenceRepository
@@ -33,9 +30,7 @@ type DeviceServiceDeps struct {
 	MaxHistoryPoints int
 }
 
-// DeviceService is the read side of the application: it merges cached live
-// data with stored preferences. It never talks to the GPS provider directly —
-// that is the poller's job — so a slow upstream can never slow down a request.
+
 type DeviceService struct {
 	cache            domain.SnapshotStore
 	prefs            domain.PreferenceRepository
@@ -44,7 +39,7 @@ type DeviceService struct {
 	maxHistoryPoints int
 }
 
-// NewDeviceService wires a DeviceService.
+
 func NewDeviceService(deps DeviceServiceDeps) *DeviceService {
 	if deps.Clock == nil {
 		deps.Clock = domain.SystemClock{}
@@ -61,7 +56,7 @@ func NewDeviceService(deps DeviceServiceDeps) *DeviceService {
 	}
 }
 
-// Feed builds the merged dashboard payload for one user.
+
 func (s *DeviceService) Feed(ctx context.Context, userID string, q domain.DeviceQuery) (Feed, error) {
 	settings, err := s.prefs.GetSettings(ctx, userID)
 	if err != nil {
@@ -78,8 +73,7 @@ func (s *DeviceService) Feed(ctx context.Context, userID string, q domain.Device
 
 	all := Merge(snapshot.Devices, PreferenceIndex(devicePrefs))
 
-	// KPIs are computed over everything the user has not hidden, before the
-	// search box narrows the list: searching should not change the fleet totals.
+	
 	candidates := Filter(all, domain.DeviceQuery{Status: domain.StatusAll, IncludeHidden: q.IncludeHidden})
 	visible := Filter(all, q)
 	Sort(visible, q.SortKey, q.SortDirection)
@@ -94,7 +88,7 @@ func (s *DeviceService) Feed(ctx context.Context, userID string, q domain.Device
 	}, nil
 }
 
-// resolveQuery fills the blanks in a request with the user's stored settings.
+
 func resolveQuery(q domain.DeviceQuery, settings domain.UserSettings) domain.DeviceQuery {
 	if q.SortKey == "" {
 		q.SortKey = settings.SortKey
@@ -102,10 +96,7 @@ func resolveQuery(q domain.DeviceQuery, settings domain.UserSettings) domain.Dev
 	if q.SortDirection == "" {
 		q.SortDirection = settings.SortDirection
 	}
-	// "Hide offline vehicles" is a persistent preference that only applies when
-	// the caller did not ask for a specific status. An explicit ?status=all
-	// must therefore stay distinguishable from "no filter supplied", which is
-	// why the preference is resolved inside this empty check rather than after.
+	
 	if q.Status == "" {
 		q.Status = domain.StatusAll
 		if !settings.ShowOfflineDevices {
@@ -115,7 +106,7 @@ func resolveQuery(q domain.DeviceQuery, settings domain.UserSettings) domain.Dev
 	return q
 }
 
-// Device returns a single merged device, hidden or not.
+
 func (s *DeviceService) Device(ctx context.Context, userID, deviceID string) (domain.DeviceView, error) {
 	feed, err := s.Feed(ctx, userID, domain.DeviceQuery{IncludeHidden: true, Status: domain.StatusAll})
 	if err != nil {
@@ -129,7 +120,7 @@ func (s *DeviceService) Device(ctx context.Context, userID, deviceID string) (do
 	return domain.DeviceView{}, fmt.Errorf("device %q: %w", deviceID, domain.ErrNotFound)
 }
 
-// History returns a device's breadcrumb trail for the requested window.
+
 func (s *DeviceService) History(ctx context.Context, deviceID string, window time.Duration, limit int) ([]domain.HistoryPoint, error) {
 	if s.history == nil {
 		return nil, nil
@@ -144,11 +135,10 @@ func (s *DeviceService) History(ctx context.Context, deviceID string, window tim
 	return s.history.List(ctx, deviceID, since, limit)
 }
 
-// Snapshot exposes the raw cached snapshot for health reporting.
+
 func (s *DeviceService) Snapshot() domain.Snapshot { return s.cache.Get() }
 
-// ExportCSV renders the currently visible devices as a spreadsheet-friendly
-// CSV, honouring the same filters and sorting the user sees on screen.
+
 func (s *DeviceService) ExportCSV(ctx context.Context, userID string, q domain.DeviceQuery) ([]byte, error) {
 	feed, err := s.Feed(ctx, userID, q)
 	if err != nil {
