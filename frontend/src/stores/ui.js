@@ -2,12 +2,7 @@ import { defineStore } from 'pinia'
 
 const THEME_KEY = 'fleetview.theme'
 
-/**
- * UI-only state: what is open, what is selected, which theme is applied and
- * any transient toasts. Nothing here is persisted server-side except the
- * theme, which the preferences store mirrors so it follows the user across
- * devices; localStorage is only used to avoid a flash before the API answers.
- */
+
 export const useUiStore = defineStore('ui', {
   state: () => ({
     theme: 'system',
@@ -40,11 +35,11 @@ export const useUiStore = defineStore('ui', {
           this.theme = stored
         }
       } catch {
-        /* storage unavailable: keep the default */
+       
       }
       this.applyTheme()
 
-      // Follow the OS while the user has not made an explicit choice.
+     
       window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', () => {
         if (this.theme === 'system') this.applyTheme()
       })
@@ -55,7 +50,7 @@ export const useUiStore = defineStore('ui', {
       try {
         window.localStorage.setItem(THEME_KEY, this.theme)
       } catch {
-        /* ignore */
+       
       }
       this.applyTheme()
     },
@@ -85,7 +80,7 @@ export const useUiStore = defineStore('ui', {
       this.detailOpen = false
     },
 
-    /** Show a transient message. Errors stay longer and never auto-stack up. */
+    
     notify(message, { type = 'info', timeout = 4000 } = {}) {
       const id = this.nextToastId++
       this.toasts.push({ id, message, type })
@@ -93,7 +88,7 @@ export const useUiStore = defineStore('ui', {
       if (timeout > 0) {
         window.setTimeout(() => this.dismiss(id), type === 'error' ? Math.max(timeout, 6000) : timeout)
       }
-      // Keep the stack short so it never covers the map.
+     
       if (this.toasts.length > 4) this.toasts.splice(0, this.toasts.length - 4)
       return id
     },
