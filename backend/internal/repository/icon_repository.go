@@ -56,6 +56,16 @@ func (r *IconRepository) Get(ctx context.Context, id string) (domain.Icon, error
 }
 
 // DeleteForDevice removes every icon a user uploaded for one device.
+// CountForUser reports how many icons a user currently stores.
+func (r *IconRepository) CountForUser(ctx context.Context, userID string) (int64, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).Model(&iconRecord{}).
+		Where("user_id = ?", userID).Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("count icons: %w", err)
+	}
+	return count, nil
+}
+
 func (r *IconRepository) DeleteForDevice(ctx context.Context, userID, deviceID string) error {
 	err := r.db.WithContext(ctx).
 		Where("user_id = ? AND device_id = ?", userID, deviceID).

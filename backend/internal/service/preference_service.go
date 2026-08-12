@@ -51,6 +51,7 @@ type PreferenceServiceDeps struct {
 	Icons            domain.IconRepository
 	Clock            domain.Clock
 	MaxIconBytes     int64
+	MaxIconsPerUser  int
 	AllowedIconTypes []string
 	IconURLPrefix    string
 }
@@ -58,12 +59,13 @@ type PreferenceServiceDeps struct {
 // PreferenceService is the write side of the application: it validates and
 // persists everything the user personalises.
 type PreferenceService struct {
-	repo          domain.PreferenceRepository
-	icons         domain.IconRepository
-	clock         domain.Clock
-	maxIconBytes  int64
-	allowedTypes  map[string]bool
-	iconURLPrefix string
+	repo            domain.PreferenceRepository
+	icons           domain.IconRepository
+	clock           domain.Clock
+	maxIconBytes    int64
+	maxIconsPerUser int
+	allowedTypes    map[string]bool
+	iconURLPrefix   string
 }
 
 // NewPreferenceService wires a PreferenceService.
@@ -73,6 +75,9 @@ func NewPreferenceService(deps PreferenceServiceDeps) *PreferenceService {
 	}
 	if deps.MaxIconBytes <= 0 {
 		deps.MaxIconBytes = 256 << 10
+	}
+	if deps.MaxIconsPerUser <= 0 {
+		deps.MaxIconsPerUser = 50
 	}
 	if deps.IconURLPrefix == "" {
 		deps.IconURLPrefix = "/api/v1/icons/"
@@ -86,12 +91,13 @@ func NewPreferenceService(deps PreferenceServiceDeps) *PreferenceService {
 	}
 
 	return &PreferenceService{
-		repo:          deps.Repo,
-		icons:         deps.Icons,
-		clock:         deps.Clock,
-		maxIconBytes:  deps.MaxIconBytes,
-		allowedTypes:  allowed,
-		iconURLPrefix: deps.IconURLPrefix,
+		repo:            deps.Repo,
+		icons:           deps.Icons,
+		clock:           deps.Clock,
+		maxIconBytes:    deps.MaxIconBytes,
+		maxIconsPerUser: deps.MaxIconsPerUser,
+		allowedTypes:    allowed,
+		iconURLPrefix:   deps.IconURLPrefix,
 	}
 }
 
@@ -270,6 +276,19 @@ func (s *PreferenceService) SaveIcon(ctx context.Context, userID, deviceID, decl
 	// One icon per device: drop the previous image so uploads cannot pile up.
 	if err := s.icons.DeleteForDevice(ctx, userID, deviceID); err != nil {
 		return domain.DevicePreference{}, fmt.Errorf("replace icon: %w", err)
+	}
+
+	// Quota is checked *after* the replace so re-uploading to a device that
+	// already has an icon never trips it — only genuinely new devices count.
+	// Without this an uploader can invent unlimited device ids and fill the
+	// disk, which on an ephemeral container means taking the service down.
+	count, err := s.icons.CountForUser(ctx, userID)
+	if err != nil {
+		return domain.DevicePreference{}, fmt.Errorf("check icon quota: %w", err)
+	}
+	if count >= int64(s.maxIconsPerUser) {
+		return domain.DevicePreference{}, domain.NewValidationError("icon",
+			fmt.Sprintf("upload limit reached (%d icons); remove one first", s.maxIconsPerUser))
 	}
 
 	icon := domain.Icon{

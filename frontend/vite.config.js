@@ -32,11 +32,15 @@ export default defineConfig({
     sourcemap: false,
     // Google Maps is loaded at runtime from the network, so the bundle stays
     // small; splitting vendor code keeps the app chunk cacheable across deploys.
+    //
+    // Written as a function rather than the object form: Vite 8 bundles with
+    // rolldown, which only accepts the callback signature.
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['vue', 'pinia', 'axios'],
-          maps: ['@googlemaps/js-api-loader', '@googlemaps/markerclusterer'],
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('@googlemaps')) return 'maps'
+          return 'vendor'
         },
       },
     },

@@ -40,6 +40,8 @@ type IconRepository interface {
 	Save(ctx context.Context, icon Icon) (Icon, error)
 	Get(ctx context.Context, id string) (Icon, error)
 	DeleteForDevice(ctx context.Context, userID, deviceID string) error
+	// CountForUser backs the per-user upload quota.
+	CountForUser(ctx context.Context, userID string) (int64, error)
 }
 
 // HistoryRepository persists device breadcrumbs for trail rendering.

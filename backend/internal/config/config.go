@@ -47,7 +47,7 @@ type OneStepGPS struct {
 	APIKey  string
 	Timeout time.Duration
 	// MaxAttempts includes the first try, so 3 means "try, retry, retry".
-	MaxAttempts int
+	MaxAttempts  int
 	RetryBackoff time.Duration
 	// SpeedUnit labels the speed values returned by the provider. It is a
 	// label only: no conversion happens on the server, the UI converts to the
@@ -96,6 +96,7 @@ type Maps struct {
 // Icons constrains marker image uploads.
 type Icons struct {
 	MaxBytes     int64
+	MaxPerUser   int
 	AllowedTypes []string
 }
 
@@ -117,7 +118,7 @@ func Load() (Config, error) {
 	}
 
 	cfg := Config{
-		Env:             env("APP_ENV", "development"),
+		Env: env("APP_ENV", "development"),
 		// Cloud Run, Heroku and friends inject PORT and expect the process to
 		// listen on it. HTTP_ADDR stays the explicit override for everything else.
 		HTTPAddr:        env("HTTP_ADDR", ":"+env("PORT", "8080")),
@@ -161,7 +162,9 @@ func Load() (Config, error) {
 			MapID:  env("GOOGLE_MAPS_MAP_ID", "DEMO_MAP_ID"),
 		},
 		Icons: Icons{
-			MaxBytes:     int64(envInt("ICON_MAX_BYTES", 256*1024)),
+			MaxBytes: int64(envInt("ICON_MAX_BYTES", 256*1024)),
+			// Caps disk growth from a caller inventing device ids.
+			MaxPerUser: envInt("ICON_MAX_PER_USER", 50),
 			// SVG is deliberately absent: an attacker-supplied SVG served from
 			// our own origin can execute script. Add it here only behind a
 			// sanitiser you trust.

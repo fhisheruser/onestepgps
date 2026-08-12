@@ -109,6 +109,7 @@ func run() error {
 		Icons:            iconRepo,
 		Clock:            clock,
 		MaxIconBytes:     cfg.Icons.MaxBytes,
+		MaxIconsPerUser:  cfg.Icons.MaxPerUser,
 		AllowedIconTypes: cfg.Icons.AllowedTypes,
 		IconURLPrefix:    "/api/v1/icons/",
 	})

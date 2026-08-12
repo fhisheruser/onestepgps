@@ -3,6 +3,7 @@ package httpapi
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"mime/multipart"
@@ -74,6 +75,7 @@ func newHarness(t *testing.T) *harness {
 		Icons:            repository.NewIconRepository(db),
 		Clock:            stubClock{},
 		MaxIconBytes:     cfg.Icons.MaxBytes,
+		MaxIconsPerUser:  3,
 		AllowedIconTypes: cfg.Icons.AllowedTypes,
 	})
 	poller := service.NewPoller(service.PollerDeps{
@@ -360,15 +362,7 @@ func TestExportCSV(t *testing.T) {
 func TestIconUpload_AcceptsPNGAndRejectsJunk(t *testing.T) {
 	h := newHarness(t)
 
-	// A minimal but real 1x1 PNG.
-	png := []byte{
-		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
-		0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-		0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
-		0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
-		0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
-		0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
-	}
+	png := minimalPNG()
 
 	rec := h.upload(t, "/api/v1/preferences/devices/d1/icon", "marker.png", "image/png", png)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
@@ -403,6 +397,11 @@ func TestIconUpload_AcceptsPNGAndRejectsJunk(t *testing.T) {
 
 func (h *harness) upload(t *testing.T, path, filename, contentType string, data []byte) *httptest.ResponseRecorder {
 	t.Helper()
+	return h.uploadAs(t, "alice", path, filename, contentType, data)
+}
+
+func (h *harness) uploadAs(t *testing.T, userID, path, filename, contentType string, data []byte) *httptest.ResponseRecorder {
+	t.Helper()
 
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
@@ -417,11 +416,66 @@ func (h *harness) upload(t *testing.T, path, filename, contentType string, data 
 
 	req := httptest.NewRequest(http.MethodPost, path, &body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	req.Header.Set(headerUserID, "alice")
+	req.Header.Set(headerUserID, userID)
 
 	rec := httptest.NewRecorder()
 	h.router.ServeHTTP(rec, req)
 	return rec
+}
+
+// An uploader can invent unlimited device ids, and on an ephemeral container
+// filling the disk means taking the service down. The quota bounds that.
+func TestIconUpload_EnforcesPerUserQuota(t *testing.T) {
+	h := newHarness(t)
+	png := minimalPNG()
+
+	// The harness allows 3 icons per user.
+	for i := 0; i < 3; i++ {
+		rec := h.upload(t, fmt.Sprintf("/api/v1/preferences/devices/dev-%d/icon", i), "m.png", "image/png", png)
+		require.Equal(t, http.StatusOK, rec.Code, "upload %d should fit inside the quota", i)
+	}
+
+	rec := h.upload(t, "/api/v1/preferences/devices/dev-99/icon", "m.png", "image/png", png)
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code, "the 4th new device must be refused")
+	assert.Contains(t, rec.Body.String(), "upload limit reached")
+
+	// Replacing an icon on a device that already has one is not a new upload
+	// and must keep working even at the quota.
+	rec = h.upload(t, "/api/v1/preferences/devices/dev-0/icon", "m.png", "image/png", png)
+	assert.Equal(t, http.StatusOK, rec.Code, "replacing an existing icon must not trip the quota")
+
+	// The quota is per user, so another user still has a full allowance.
+	rec = h.uploadAs(t, "bob", "/api/v1/preferences/devices/dev-99/icon", "m.png", "image/png", png)
+	assert.Equal(t, http.StatusOK, rec.Code, "one user's quota must not exhaust another's")
+}
+
+// minimalPNG is a valid 1x1 PNG, used to prove uploads are accepted on their
+// bytes rather than their filename.
+func minimalPNG() []byte {
+	return []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+		0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+		0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+		0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+		0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+	}
+}
+
+func TestSecurityHeaders_AppShell(t *testing.T) {
+	h := newHarness(t)
+	rec := h.do(t, http.MethodGet, "/api/v1/devices", nil)
+
+	csp := rec.Header().Get("Content-Security-Policy")
+	assert.Contains(t, csp, "object-src 'none'")
+	assert.Contains(t, csp, "frame-ancestors 'none'")
+	assert.Contains(t, csp, "base-uri 'self'")
+	assert.NotContains(t, csp, "unsafe-eval", "Maps does not need eval; do not grant it")
+	assert.Contains(t, csp, "https://maps.googleapis.com", "the map must still be able to load")
+
+	assert.Equal(t, "max-age=31536000; includeSubDomains", rec.Header().Get("Strict-Transport-Security"))
+	assert.Contains(t, rec.Header().Get("Permissions-Policy"), "geolocation=()")
+	assert.Equal(t, "same-origin-allow-popups", rec.Header().Get("Cross-Origin-Opener-Policy"))
 }
 
 func TestRuntimeConfig_NeverLeaksTheProviderKey(t *testing.T) {

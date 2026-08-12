@@ -164,12 +164,46 @@ func CORS(allowedOrigins []string) gin.HandlerFunc {
 }
 
 // SecurityHeaders applies conservative defaults for an API surface.
+// appCSP is the Content-Security-Policy for the dashboard itself.
+//
+// Honesty about its strength: 'unsafe-inline' is unavoidable here. The theme
+// script in index.html must run before first paint to prevent a white flash,
+// and the 3D vehicles are drawn with bound inline styles. That weakens CSP's
+// anti-XSS value — but the surviving directives still block the things that
+// turn an injection into a breach: no attacker-hosted scripts (script-src is
+// an allow-list), no plugins (object-src), no <base> hijack, no framing, and
+// no form posts to another origin.
+//
+// 'unsafe-eval' is deliberately NOT granted. Google Maps runs without it in
+// the paths this app uses, and it was verified against the live map.
+//
+// Uploaded icons are exempt: their handler sets a far stricter policy of its
+// own (default-src 'none'; sandbox), and because handlers run after this
+// middleware, that stricter value wins.
+const appCSP = "default-src 'self'; " +
+	"base-uri 'self'; " +
+	"object-src 'none'; " +
+	"frame-ancestors 'none'; " +
+	"form-action 'self'; " +
+	"script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com; " +
+	"style-src 'self' 'unsafe-inline'; " +
+	"img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.ggpht.com; " +
+	"font-src 'self' data:; " +
+	"connect-src 'self' https://maps.googleapis.com https://*.googleapis.com wss: ; " +
+	"worker-src 'self' blob:"
+
 func SecurityHeaders() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		h := c.Writer.Header()
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("Referrer-Policy", "no-referrer")
+		h.Set("Content-Security-Policy", appCSP)
+		// Browsers ignore HSTS over plain HTTP, so it is safe to always send.
+		h.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		// The app asks for none of these; deny them so a compromise cannot.
+		h.Set("Permissions-Policy", "geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()")
+		h.Set("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
 		c.Next()
 	}
 }
