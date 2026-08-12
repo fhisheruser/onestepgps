@@ -29,13 +29,13 @@ const statusClass = computed(() => STATUS_CLASSES[props.device.driveStatus] || S
 
 const vehicleType = computed(() => {
   const icon = prefs.value.markerIcon
-  // A custom uploaded image has no 3D equivalent; fall back to a neutral van.
+
   return !icon || icon === 'custom' || icon === 'pin' ? 'van' : icon
 })
 
 const updatedLabel = computed(() => timeAgo(position.value.recordedAt, props.now))
 
-/** Vehicles that have not reported for 15 minutes get a muted timestamp. */
+
 const isCold = computed(() => {
   const at = Date.parse(position.value.recordedAt || '')
   return Number.isNaN(at) ? true : props.now - at > 15 * 60 * 1000
@@ -54,8 +54,7 @@ const isCold = computed(() => {
     :draggable="draggable"
     :aria-current="selected ? 'true' : undefined"
   >
-    <!-- The whole card is clickable, but nested buttons stay independently
-         focusable, so this overlay sits behind them rather than wrapping. -->
+    
     <button
       type="button"
       class="absolute inset-0 z-0 rounded-xl2"
@@ -146,7 +145,7 @@ const isCold = computed(() => {
       </div>
     </div>
 
-    <!-- Row actions: always reachable by keyboard, revealed on hover for mice. -->
+
     <div
       class="relative z-10 mt-2 flex items-center justify-end gap-0.5 opacity-0 transition-opacity duration-200
              focus-within:opacity-100 group-hover:opacity-100 md:-mb-1"
