@@ -52,14 +52,14 @@ func TestMerge_AppliesPreferencesAndDefaults(t *testing.T) {
 	assert.True(t, views[0].Pinned)
 	assert.Equal(t, "#2E7D32", views[0].MarkerColor)
 	assert.Equal(t, "Refrigerated", views[0].Notes)
-	// The provider's own name is preserved so the UI can show "renamed from".
+
 	assert.Equal(t, "Truck 04", views[0].Device.Name)
 
 	assert.True(t, views[1].Hidden)
 	assert.False(t, views[1].Renamed)
 	assert.Equal(t, "Van 12", views[1].DisplayName)
 
-	// Untouched devices get defaults, with the icon inferred from the vehicle.
+
 	assert.Equal(t, domain.DefaultMarkerColor, views[2].MarkerColor)
 	assert.Equal(t, domain.IconBus, views[2].MarkerIcon)
 }
@@ -176,7 +176,7 @@ func TestSort_CustomOrderThenStableTieBreak(t *testing.T) {
 	Sort(views, domain.SortKeyCustom, domain.SortAsc)
 	assert.Equal(t, []string{"Bus 02", "Truck 04", "Van 12"}, names(views))
 
-	// Equal keys fall back to name so rows do not jitter between polls.
+	
 	equal := Merge(sampleDevices(), nil)
 	Sort(equal, domain.SortKeyCustom, domain.SortAsc)
 	assert.Equal(t, []string{"Bus 02", "Truck 04", "Van 12"}, names(equal))
