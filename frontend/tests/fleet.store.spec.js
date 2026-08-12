@@ -60,7 +60,6 @@ describe('fleet store', () => {
     expect(fleet.initialised).toBe(true)
     expect(fleet.error).toBeNull()
 
-    // A WebSocket push carries the same envelope.
     fleet.applyFeed({ ...structuredClone(FEED), summary: { ...FEED.summary, driving: 2 } })
     expect(fleet.summary.driving).toBe(2)
   })
