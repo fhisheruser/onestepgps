@@ -65,7 +65,7 @@ func TestSaveSettings_RoundTrips(t *testing.T) {
 	assert.True(t, loaded.ShowTrails)
 	assert.Equal(t, 30, loaded.RefreshSeconds)
 
-	// A second save updates rather than duplicating.
+
 	settings.Theme = domain.ThemeLight
 	require.NoError(t, repo.SaveSettings(ctx, settings))
 	loaded, err = repo.GetSettings(ctx, "alice")
@@ -115,7 +115,7 @@ func TestDevicePreferences_UpsertListAndDelete(t *testing.T) {
 	assert.Equal(t, domain.IconTruck, loaded.MarkerIcon)
 	assert.True(t, loaded.Pinned)
 
-	// Upsert, not insert-twice.
+
 	pref.DisplayName = "Harbor Hauler II"
 	require.NoError(t, repo.SaveDevicePreference(ctx, pref))
 
@@ -151,7 +151,7 @@ func TestSaveDevicePreference_DropsRowWithNoCustomisation(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, list, 1)
 
-	// Un-hiding leaves nothing worth persisting.
+	
 	require.NoError(t, repo.SaveDevicePreference(ctx, domain.DevicePreference{
 		UserID: "alice", DeviceID: "d1", Hidden: false,
 	}))
@@ -246,12 +246,11 @@ func TestHistoryRepository_AppendListPrune(t *testing.T) {
 	assert.True(t, trail[0].RecordedAt.Before(trail[2].RecordedAt), "trails come back oldest first")
 	assert.InDelta(t, 32.70, trail[0].Lat, 0.0001)
 
-	// A tight window excludes older breadcrumbs.
 	recent, err := repo.List(ctx, "d1", now.Add(-15*time.Minute), 100)
 	require.NoError(t, err)
 	assert.Len(t, recent, 1)
 
-	// A limit keeps the newest points.
+	
 	limited, err := repo.List(ctx, "d1", now.Add(-time.Hour), 2)
 	require.NoError(t, err)
 	require.Len(t, limited, 2)
