@@ -10,21 +10,18 @@ import (
 	"fleetview/internal/domain"
 )
 
-// IconRepository stores uploaded marker images as BLOBs. Keeping them in
-// SQLite rather than on disk means the whole application state is one file:
-// trivial to back up, and no volume permissions to get wrong in Docker.
+
 type IconRepository struct {
 	db *gorm.DB
 }
 
-// NewIconRepository builds the repository.
+
 func NewIconRepository(db *gorm.DB) *IconRepository {
 	return &IconRepository{db: db}
 }
 
 var _ domain.IconRepository = (*IconRepository)(nil)
 
-// Save persists an icon.
 func (r *IconRepository) Save(ctx context.Context, icon domain.Icon) (domain.Icon, error) {
 	record := iconRecord{
 		ID:          icon.ID,
@@ -40,7 +37,7 @@ func (r *IconRepository) Save(ctx context.Context, icon domain.Icon) (domain.Ico
 	return record.toDomain(), nil
 }
 
-// Get returns an icon by id.
+
 func (r *IconRepository) Get(ctx context.Context, id string) (domain.Icon, error) {
 	var record iconRecord
 	err := r.db.WithContext(ctx).First(&record, "id = ?", id).Error
@@ -55,8 +52,7 @@ func (r *IconRepository) Get(ctx context.Context, id string) (domain.Icon, error
 	}
 }
 
-// DeleteForDevice removes every icon a user uploaded for one device.
-// CountForUser reports how many icons a user currently stores.
+
 func (r *IconRepository) CountForUser(ctx context.Context, userID string) (int64, error) {
 	var count int64
 	if err := r.db.WithContext(ctx).Model(&iconRecord{}).
