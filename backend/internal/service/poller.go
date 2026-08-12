@@ -10,13 +10,13 @@ import (
 	"fleetview/internal/domain"
 )
 
-// Event names published to realtime subscribers.
+
 const (
 	EventFleetUpdated = "fleet.updated"
 	EventFleetError   = "fleet.error"
 )
 
-// PollerDeps are the collaborators of the background poller.
+
 type PollerDeps struct {
 	Provider  domain.DeviceProvider
 	Cache     *SnapshotCache
@@ -35,16 +35,14 @@ type PollerDeps struct {
 	HistoryPrune       time.Duration
 }
 
-// lastFix remembers where a device was the last time we stored a breadcrumb.
+
 type lastFix struct {
 	lat    float64
 	lng    float64
 	status domain.DriveStatus
 }
 
-// Poller refreshes the fleet snapshot on a fixed interval. It is the only
-// component that talks to the GPS provider, so upstream latency and outages
-// are isolated from every HTTP request the dashboard makes.
+
 type Poller struct {
 	provider  domain.DeviceProvider
 	cache     *SnapshotCache
@@ -72,7 +70,7 @@ type Poller struct {
 	lastFixes           map[string]lastFix
 }
 
-// PollerHealth is the observable state of the background loop.
+
 type PollerHealth struct {
 	Provider            string
 	Healthy             bool
@@ -85,7 +83,7 @@ type PollerHealth struct {
 	IntervalSeconds     float64
 }
 
-// NewPoller wires a Poller, applying safe defaults for optional settings.
+
 func NewPoller(deps PollerDeps) *Poller {
 	if deps.Clock == nil {
 		deps.Clock = domain.SystemClock{}
@@ -94,8 +92,7 @@ func NewPoller(deps PollerDeps) *Poller {
 		deps.Interval = 10 * time.Second
 	}
 	if deps.Timeout <= 0 {
-		// Generous relative to the interval: the client's own retries must be
-		// allowed to finish, and a tick that arrives mid-poll is simply skipped.
+		
 		deps.Timeout = 3 * deps.Interval
 	}
 	if deps.FailureThreshold <= 0 {
@@ -126,8 +123,7 @@ func NewPoller(deps PollerDeps) *Poller {
 	}
 }
 
-// Run blocks until ctx is cancelled, polling on the configured interval. The
-// first poll happens immediately so the dashboard is never empty on boot.
+
 func (p *Poller) Run(ctx context.Context) {
 	p.log.Info("starting background poller",
 		"provider", p.provider.Name(),
@@ -149,15 +145,13 @@ func (p *Poller) Run(ctx context.Context) {
 			p.log.Info("background poller stopped")
 			return
 		case <-ticker.C:
-			// Ticks that arrive while a slow poll is still running are
-			// coalesced by the ticker, so polls never overlap.
+			
 			_ = p.PollOnce(ctx)
 		}
 	}
 }
 
-// PollOnce performs a single refresh cycle. It is exported so tests (and a
-// future admin "refresh now" endpoint) can drive the loop deterministically.
+
 func (p *Poller) PollOnce(ctx context.Context) error {
 	attemptCtx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
@@ -217,8 +211,7 @@ func (p *Poller) onFailure(err error) {
 
 	p.cache.MarkStale(err.Error())
 
-	// The first blip is noise; sustained failure is an incident. Log
-	// accordingly so alerting can key off ERROR without being flooded.
+	
 	if failures >= p.failureThreshold {
 		p.log.Error("upstream fetch failing repeatedly",
 			"consecutive_failures", failures, "error", err)
@@ -236,8 +229,7 @@ func (p *Poller) onFailure(err error) {
 	}
 }
 
-// recordHistory appends breadcrumbs for devices that actually moved or changed
-// state, so a parked fleet does not fill the database overnight.
+
 func (p *Poller) recordHistory(ctx context.Context, devices []domain.Device) {
 	points := make([]domain.HistoryPoint, 0, len(devices))
 
@@ -274,7 +266,7 @@ func (p *Poller) recordHistory(ctx context.Context, devices []domain.Device) {
 	}
 }
 
-// pruneLoop deletes breadcrumbs older than the retention window.
+
 func (p *Poller) pruneLoop(ctx context.Context) {
 	ticker := time.NewTicker(p.pruneInterval)
 	defer ticker.Stop()
@@ -297,7 +289,7 @@ func (p *Poller) pruneLoop(ctx context.Context) {
 	}
 }
 
-// Health reports the loop's current state for /healthz and the UI banner.
+
 func (p *Poller) Health() PollerHealth {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
@@ -315,7 +307,7 @@ func (p *Poller) Health() PollerHealth {
 	}
 }
 
-// distanceMeters is the great-circle distance between two coordinates.
+
 func distanceMeters(lat1, lng1, lat2, lng2 float64) float64 {
 	const earthRadiusM = 6371000.0
 	rad := math.Pi / 180
