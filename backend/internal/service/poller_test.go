@@ -15,9 +15,7 @@ import (
 	"fleetview/internal/domain"
 )
 
-// ---------------------------------------------------------------------------
-// Test doubles
-// ---------------------------------------------------------------------------
+
 
 type fakeClock struct {
 	mu  sync.Mutex
@@ -135,9 +133,7 @@ func deviceAt(id string, lat, lng float64, status domain.DriveStatus, at time.Ti
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+
 
 func TestPollOnce_PublishesSnapshot(t *testing.T) {
 	clock := newFakeClock(baseTime)
@@ -226,22 +222,22 @@ func TestRecordHistory_OnlyStoresMeaningfulChanges(t *testing.T) {
 		HistoryEnabled: true, HistoryMinDistance: 15,
 	})
 
-	// First fix is always recorded.
+
 	provider.set([]domain.Device{deviceAt("d1", 32.700000, -117.100000, domain.DriveStatusDriving, baseTime)}, nil)
 	require.NoError(t, poller.PollOnce(context.Background()))
 	require.Len(t, history.all(), 1)
 
-	// A parked vehicle jittering by a couple of metres adds nothing.
+	
 	provider.set([]domain.Device{deviceAt("d1", 32.700010, -117.100010, domain.DriveStatusDriving, baseTime)}, nil)
 	require.NoError(t, poller.PollOnce(context.Background()))
 	assert.Len(t, history.all(), 1, "sub-threshold movement is noise")
 
-	// Real movement is recorded.
+
 	provider.set([]domain.Device{deviceAt("d1", 32.705000, -117.100000, domain.DriveStatusDriving, baseTime)}, nil)
 	require.NoError(t, poller.PollOnce(context.Background()))
 	assert.Len(t, history.all(), 2)
 
-	// A status change is recorded even when the vehicle has not moved.
+
 	provider.set([]domain.Device{deviceAt("d1", 32.705000, -117.100000, domain.DriveStatusOff, baseTime)}, nil)
 	require.NoError(t, poller.PollOnce(context.Background()))
 	require.Len(t, history.all(), 3)
@@ -275,7 +271,7 @@ func TestRun_StopsOnContextCancellation(t *testing.T) {
 		close(done)
 	}()
 
-	// Let the immediate poll plus a tick or two happen.
+
 	time.Sleep(70 * time.Millisecond)
 	cancel()
 
